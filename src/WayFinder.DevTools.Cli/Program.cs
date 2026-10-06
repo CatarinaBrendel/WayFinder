@@ -1,4 +1,5 @@
 using System.CommandLine;
+using WayFinder.DevTools.Cli.Commands;
 using WayFinder.DevTools.Cli.Commands.Projects;
 using WayFinder.DevTools.Cli.Commands.Repositories;
 using WayFinder.DevTools.Cli.Presentation;
@@ -18,6 +19,10 @@ rootCommand.Subcommands.Add(
 
 rootCommand.Subcommands.Add(
     RepositoryCommand.Create(services)
+);
+
+rootCommand.Subcommands.Add(
+    DoctorCommand.Create(services)
 );
 
 if (args.Length == 0

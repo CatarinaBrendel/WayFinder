@@ -1,6 +1,7 @@
 using WayFinder.DevTools.Application.Projects.Detection;
 using WayFinder.DevTools.Application.Projects.Inspection;
 using WayFinder.DevTools.Infrastructure.Configuration;
+using WayFinder.DevTools.Infrastructure.Diagnostics;
 using WayFinder.DevTools.Infrastructure.Projects;
 using WayFinder.DevTools.Infrastructure.Projects.Detection;
 using WayFinder.DevTools.Infrastructure.Projects.Files;
@@ -71,6 +72,13 @@ public static class WayFinderComposition
         var projectRegistry =
             new JsonProjectRegistry(environment);
 
+        var doctor =
+            new Doctor(
+                environment,
+                projectRegistry,
+                projectLocator
+            );
+
         return new WayFinderServices(
             ProjectLocator: projectLocator,
             ProjectFileSystem: projectFileSystem,
@@ -80,7 +88,8 @@ public static class WayFinderComposition
             ProjectRegistry: projectRegistry,
             Environment: environment,
             RepositoryFileReader: repositoryFileReader,
-            RepositorySearcher: repositorySearcher
+            RepositorySearcher: repositorySearcher,
+            Doctor: doctor
         );
     }
 }
