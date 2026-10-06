@@ -1,0 +1,7 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/WayFinder.DevTools.Application/WayFinder.DevTools.Application.csproj" />
+    <Project Path="src/WayFinder.DevTools.Cli/WayFinder.DevTools.Cli.csproj" />
+    <Project Path="src/WayFinder.DevTools.Infrastructure/WayFinder.DevTools.Infrastructure.csproj" />
+  </Folder>
+</Solution>
