@@ -8,4 +8,15 @@ public interface IProjectFileSystem
         ProjectContext project,
         string searchPattern
     );
+
+    string ReadAllText(
+        ProjectContext project,
+        string relativePath
+    );
+
+    void WriteAllText(
+        ProjectContext project,
+        string relativePath,
+        string content
+    );
 }

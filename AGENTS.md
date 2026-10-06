@@ -329,6 +329,69 @@ Do not introduce large central technology enums or models that require WayFinder
 
 ---
 
+## Technology Model
+
+WayFinder is technology-agnostic and must not assume that its built-in
+technology catalog represents the complete universe of technologies.
+
+Technology identifiers are open-ended strings, not enums or other closed
+type systems.
+
+Built-in technology recognition is data-driven through the embedded
+`technologies.json` catalog. Adding recognition for another ecosystem
+should normally require adding or changing catalog data, not implementing
+another technology-specific detector.
+
+The generic `TechnologySignatureDetector` interprets technology signatures.
+Do not create detectors such as `SwiftProjectDetector`,
+`PythonProjectDetector`, or `RustProjectDetector` when the technology can be
+described through signatures.
+
+Special-purpose detectors remain appropriate when behavior cannot reasonably
+be represented by technology signatures.
+
+Project manifests may declare technologies that are unknown to WayFinder.
+Unknown technology identifiers are valid project metadata and must not be
+rejected.
+
+Keep these concepts separate:
+
+- `technologies.json` describes technologies WayFinder knows how to recognize.
+- `wayfinder.json` describes technologies a particular project declares that
+  it uses.
+- Detection represents repository evidence.
+- Declaration represents developer-provided project knowledge.
+- AI consumers may understand technologies that WayFinder itself does not
+  recognize.
+
+WayFinder must remain useful for projects that do not use .NET, Node,
+DeadRoute-specific conventions, or any other particular ecosystem.
+
+## Project Manifest
+
+A repository may contain a root-level `wayfinder.json`.
+
+The manifest is optional for normal CLI inspection but will provide explicit
+project metadata and may later participate in AI authorization and context
+generation.
+
+Manifest version 1:
+
+- `version` is required and must be `1`.
+- `name` is optional.
+- `technologies` is required and may be empty.
+- Technology identifiers must be non-empty.
+- Duplicate technology identifiers are invalid.
+- Unknown technology identifiers are valid.
+- Extra JSON properties should remain tolerated for forward compatibility.
+
+Reading project manifests must go through `IProjectFileSystem`. Do not bypass
+the project filesystem security boundary with direct arbitrary file access.
+
+Commands named `info`, `inspect`, `list`, `show`, or similar observational
+operations must remain read-only. A future `project init` command may create
+`wayfinder.json`, but initialization must be an explicit write operation.
+
 ## CLI Output
 
 Human-facing CLI output may be formatted for readability.

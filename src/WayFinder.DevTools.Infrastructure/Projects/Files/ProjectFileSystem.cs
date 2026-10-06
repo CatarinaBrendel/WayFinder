@@ -32,6 +32,26 @@ public sealed class ProjectFileSystem : IProjectFileSystem
         return true;
     }
 
+    public string ReadAllText(
+        ProjectContext project,
+        string relativePath
+    )
+    {
+        var path = ResolvePath(project, relativePath);
+
+        if (!File.Exists(path))
+        {
+            throw new FileNotFoundException(
+                $"The file '{relativePath}' does not exist.",
+                path
+            );
+        }
+
+        ResolveExistingPath(project, path);
+
+        return File.ReadAllText(path);
+    }
+
     public IReadOnlyCollection<ProjectFile> FindFiles(
         ProjectContext project,
         string searchPattern
@@ -159,5 +179,21 @@ public sealed class ProjectFileSystem : IProjectFileSystem
                 "The requested path is outside the project root."
             );
         }
+    }
+
+    public void WriteAllText(
+        ProjectContext project,
+        string relativePath,
+        string content
+    )
+    {
+        var path = ResolvePath(project, relativePath);
+
+        if (File.Exists(path))
+        {
+            ResolveExistingPath(project, path);
+        }
+
+        File.WriteAllText(path, content);
     }
 }

@@ -1,0 +1,75 @@
+{
+    "version": 1,
+    "technologies": [
+        {
+            "id": "dotnet",
+            "displayName": ".NET",
+            "artifacts": [
+                {
+                    "pattern": "*.sln",
+                    "type": "solution"
+                },
+                {
+                    "pattern": "*.slnx",
+                    "type": "solution"
+                },
+                {
+                    "pattern": "*.csproj",
+                    "type": "project"
+                },
+                {
+                    "pattern": "global.json",
+                    "type": "globaljson"
+                }
+            ]
+        },
+        {
+            "id": "node",
+            "displayName": "Node",
+            "artifacts": [
+                {
+                    "pattern": "package.json",
+                    "type": "manifest"
+                },
+                {
+                    "pattern": "package-lock.json",
+                    "type": "npm-lock"
+                },
+                {
+                    "pattern": "npm-shrinkwrap.json",
+                    "type": "npm-lock"
+                },
+                {
+                    "pattern": "yarn.lock",
+                    "type": "yarn-lock"
+                },
+                {
+                    "pattern": "pnpm-lock.yaml",
+                    "type": "pnpm-lock"
+                },
+                {
+                    "pattern": "bun.lock",
+                    "type": "bun-lock"
+                },
+                {
+                    "pattern": "bun.lockb",
+                    "type": "bun-lock"
+                }
+            ]
+        },
+        {
+            "id": "swift",
+            "displayName": "Swift",
+            "artifacts": [
+                {
+                    "pattern": "Package.swift",
+                    "type": "manifest"
+                },
+                {
+                    "pattern": "Package.resolved",
+                    "type": "lockfile"
+                }
+            ]
+        }
+    ]
+}

@@ -2,6 +2,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\WayFinder.DevTools.Application\WayFinder.DevTools.Application.csproj" />
+    <EmbeddedResource Include="Resources\technologies.json" />
   </ItemGroup>
 
 </Project>
