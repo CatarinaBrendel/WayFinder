@@ -26,6 +26,14 @@ internal static class ProjectCommand
             ProjectAddCommand.Create(services)
         );
 
+        command.Subcommands.Add(
+            ProjectListCommand.Create(services)
+        );
+
+        command.Subcommands.Add(
+            ProjectRemoveCommand.Create(services)
+        );
+
         return command;
     }
 }
