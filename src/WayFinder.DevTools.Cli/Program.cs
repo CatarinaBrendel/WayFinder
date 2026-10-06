@@ -1,5 +1,6 @@
 using System.CommandLine;
 using WayFinder.DevTools.Cli.Commands.Projects;
+using WayFinder.DevTools.Cli.Commands.Repositories;
 using WayFinder.DevTools.Cli.Presentation;
 using WayFinder.DevTools.Infrastructure.Composition;
 
@@ -13,6 +14,10 @@ var rootCommand =
 
 rootCommand.Subcommands.Add(
     ProjectCommand.Create(services)
+);
+
+rootCommand.Subcommands.Add(
+    RepositoryCommand.Create(services)
 );
 
 if (args.Length == 0

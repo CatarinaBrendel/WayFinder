@@ -196,4 +196,60 @@ public sealed class ProjectFileSystem : IProjectFileSystem
 
         File.WriteAllText(path, content);
     }
+
+    public ProjectFileRead Read(
+        ProjectContext project,
+        string relativePath,
+        int maxBytes
+    )
+    {
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(
+            maxBytes
+        );
+
+        var path = ResolvePath(
+            project,
+            relativePath
+        );
+
+        if (!File.Exists(path))
+        {
+            throw new FileNotFoundException(
+                $"The file '{relativePath}' does not exist.",
+                path
+            );
+        }
+
+        ResolveExistingPath(
+            project,
+            path
+        );
+
+        using var stream = new FileStream(
+            path,
+            FileMode.Open,
+            FileAccess.Read,
+            FileShare.Read
+        );
+
+        var totalBytes = stream.Length;
+
+        var bytesToRead =
+            (int)Math.Min(
+                totalBytes,
+                maxBytes
+            );
+
+        var content =
+            new byte[bytesToRead];
+
+        stream.ReadExactly(content);
+
+        return new ProjectFileRead(
+            Content: content,
+            TotalBytes: totalBytes,
+            Truncated: totalBytes > maxBytes
+        );
+    }
+
 }

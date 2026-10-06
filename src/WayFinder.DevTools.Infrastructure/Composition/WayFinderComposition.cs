@@ -7,6 +7,7 @@ using WayFinder.DevTools.Infrastructure.Projects.Files;
 using WayFinder.DevTools.Infrastructure.Projects.Initialization;
 using WayFinder.DevTools.Infrastructure.Projects.Manifest;
 using WayFinder.DevTools.Infrastructure.Projects.Registry;
+using WayFinder.DevTools.Infrastructure.Repositories.Reading;
 
 namespace WayFinder.DevTools.Infrastructure.Composition;
 
@@ -19,6 +20,11 @@ public static class WayFinderComposition
 
         var projectFileSystem =
             new ProjectFileSystem();
+
+        var repositoryFileReader =
+            new RepositoryFileReader(
+                projectFileSystem
+            );
 
         var signatureProvider =
             new JsonTechnologySignatureProvider();
@@ -66,7 +72,8 @@ public static class WayFinderComposition
             ProjectManifestReader: projectManifestReader,
             ProjectInitializer: projectInitializer,
             ProjectRegistry: projectRegistry,
-            Environment: environment
+            Environment: environment,
+            RepositoryFileReader: repositoryFileReader
         );
     }
 }

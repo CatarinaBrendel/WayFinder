@@ -218,6 +218,160 @@ public sealed class ProjectFileSystemTests : IDisposable
         );
     }
 
+    [Fact]
+    public void Read_TruncatesFileAtMaximumBytes()
+    {
+        File.WriteAllText(
+            Path.Combine(
+                _project.RootPath,
+                "large.txt"
+            ),
+            "abcdefghij"
+        );
+
+        var result = _fileSystem.Read(
+            _project,
+            "large.txt",
+            maxBytes: 4
+        );
+
+        Assert.Equal(
+            "abcd"u8.ToArray(),
+            result.Content
+        );
+
+        Assert.Equal(
+            10,
+            result.TotalBytes
+        );
+
+        Assert.True(
+            result.Truncated
+        );
+    }
+
+    [Fact]
+    public void Read_ReturnsEntireFileWhenBelowLimit()
+    {
+        File.WriteAllText(
+            Path.Combine(
+                _project.RootPath,
+                "small.txt"
+            ),
+            "hello"
+        );
+
+        var result = _fileSystem.Read(
+            _project,
+            "small.txt",
+            maxBytes: 64
+        );
+
+        Assert.Equal(
+            "hello"u8.ToArray(),
+            result.Content
+        );
+
+        Assert.Equal(
+            5,
+            result.TotalBytes
+        );
+
+        Assert.False(
+            result.Truncated
+        );
+    }
+
+    [Fact]
+    public void Read_RejectsZeroMaximumBytes()
+    {
+        Assert.Throws<ArgumentOutOfRangeException>(
+            () => _fileSystem.Read(
+                _project,
+                "anything.txt",
+                maxBytes: 0
+            )
+        );
+    }
+
+    [Fact]
+    public void Read_RejectsNegativeMaximumBytes()
+    {
+        Assert.Throws<ArgumentOutOfRangeException>(
+            () => _fileSystem.Read(
+                _project,
+                "anything.txt",
+                maxBytes: -1
+            )
+        );
+    }
+
+    [Fact]
+    public void Read_ForParentTraversal_Throws()
+    {
+        Assert.Throws<UnauthorizedAccessException>(
+            () => _fileSystem.Read(
+                _project,
+                "../outside.txt",
+                maxBytes: 64
+            )
+        );
+    }
+
+    [Fact]
+    public void Read_ForAbsolutePath_Throws()
+    {
+        Assert.Throws<UnauthorizedAccessException>(
+            () => _fileSystem.Read(
+                _project,
+                "/etc/passwd",
+                maxBytes: 64
+            )
+        );
+    }
+
+    [Fact]
+    public void Read_ForSymlinkOutsideProject_Throws()
+    {
+        var outside = Path.Combine(
+            Path.GetTempPath(),
+            $"wayfinder-secret-{Guid.NewGuid():N}.txt"
+        );
+
+        File.WriteAllText(
+            outside,
+            "secret"
+        );
+
+        try
+        {
+            var link = Path.Combine(
+                _root,
+                "secret.txt"
+            );
+
+            File.CreateSymbolicLink(
+                link,
+                outside
+            );
+
+            Assert.Throws<UnauthorizedAccessException>(
+                () => _fileSystem.Read(
+                    _project,
+                    "secret.txt",
+                    maxBytes: 64
+                )
+            );
+        }
+        finally
+        {
+            if (File.Exists(outside))
+            {
+                File.Delete(outside);
+            }
+        }
+    }
+
     public void Dispose()
     {
         if (Directory.Exists(_root))

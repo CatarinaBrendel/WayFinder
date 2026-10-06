@@ -19,4 +19,10 @@ public interface IProjectFileSystem
         string relativePath,
         string content
     );
+
+    ProjectFileRead Read(
+        ProjectContext project,
+        string relativePath,
+        int maxBytes
+    );
 }

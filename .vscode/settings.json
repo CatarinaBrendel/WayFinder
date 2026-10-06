@@ -1,7 +1,6 @@
 {
   "editor.formatOnSave": true,
   "editor.formatOnPaste": true,
-
   "[csharp]": {
     "editor.defaultFormatter": "ms-dotnettools.csharp",
     "editor.formatOnSave": true,
@@ -10,17 +9,14 @@
       "source.organizeImports": "explicit"
     }
   },
-
   "[json]": {
     "editor.defaultFormatter": "vscode.json-language-features",
     "editor.formatOnSave": true
   },
-
   "[jsonc]": {
     "editor.defaultFormatter": "vscode.json-language-features",
     "editor.formatOnSave": true
   },
-
   "files.insertFinalNewline": true,
   "files.trimTrailingWhitespace": true
 }
