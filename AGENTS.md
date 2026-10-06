@@ -392,6 +392,47 @@ Commands named `info`, `inspect`, `list`, `show`, or similar observational
 operations must remain read-only. A future `project init` command may create
 `wayfinder.json`, but initialization must be an explicit write operation.
 
+## Project Registration and AI Authorization
+
+Project registration is a security boundary.
+
+The human CLI may inspect the Git repository containing the current working
+directory without requiring registration.
+
+AI-facing adapters, including MCP, must only expose projects that have been
+explicitly registered with WayFinder.
+
+Registration grants AI-facing adapters read visibility to a project. It does
+not grant permission to modify the project.
+
+A registered project may be:
+
+- inspected;
+- searched;
+- read through bounded WayFinder read operations;
+- used to construct project context.
+
+Registration alone must never permit:
+
+- creating files;
+- modifying files;
+- deleting files;
+- executing arbitrary commands;
+- changing Git state;
+- committing or pushing;
+- installing dependencies;
+- running arbitrary scripts.
+
+Any future AI-facing mutation capability must use a separate explicit
+authorization model. Write authorization must never be inferred from project
+registration.
+
+All AI-facing filesystem operations must continue to pass through WayFinder's
+project filesystem security boundary.
+
+The project registry must not provide a mechanism for escaping project-root
+containment.
+
 ## CLI Output
 
 Human-facing CLI output may be formatted for readability.

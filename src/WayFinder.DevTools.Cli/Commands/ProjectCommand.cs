@@ -22,6 +22,10 @@ internal static class ProjectCommand
             ProjectInitCommand.Create(services)
         );
 
+        command.Subcommands.Add(
+            ProjectAddCommand.Create(services)
+        );
+
         return command;
     }
 }

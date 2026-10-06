@@ -1,10 +1,12 @@
 using WayFinder.DevTools.Application.Projects.Detection;
 using WayFinder.DevTools.Application.Projects.Inspection;
+using WayFinder.DevTools.Infrastructure.Configuration;
 using WayFinder.DevTools.Infrastructure.Projects;
 using WayFinder.DevTools.Infrastructure.Projects.Detection;
 using WayFinder.DevTools.Infrastructure.Projects.Files;
 using WayFinder.DevTools.Infrastructure.Projects.Initialization;
 using WayFinder.DevTools.Infrastructure.Projects.Manifest;
+using WayFinder.DevTools.Infrastructure.Projects.Registry;
 
 namespace WayFinder.DevTools.Infrastructure.Composition;
 
@@ -51,12 +53,20 @@ public static class WayFinderComposition
                 projectFileSystem
             );
 
+        var environment =
+            new WayFinderEnvironment();
+
+        var projectRegistry =
+            new JsonProjectRegistry(environment);
+
         return new WayFinderServices(
             ProjectLocator: projectLocator,
             ProjectFileSystem: projectFileSystem,
             ProjectInspector: projectInspector,
             ProjectManifestReader: projectManifestReader,
-            ProjectInitializer: projectInitializer
+            ProjectInitializer: projectInitializer,
+            ProjectRegistry: projectRegistry,
+            Environment: environment
         );
     }
 }
