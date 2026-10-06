@@ -4,4 +4,7 @@
     <Project Path="src/WayFinder.DevTools.Cli/WayFinder.DevTools.Cli.csproj" />
     <Project Path="src/WayFinder.DevTools.Infrastructure/WayFinder.DevTools.Infrastructure.csproj" />
   </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/WayFinder.DevTools.Infrastructure.Tests/WayFinder.DevTools.Infrastructure.Tests.csproj" />
+  </Folder>
 </Solution>
