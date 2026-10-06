@@ -372,6 +372,124 @@ public sealed class ProjectFileSystemTests : IDisposable
         }
     }
 
+    [Fact]
+    public void GetFiles_ReturnsAllFiles()
+    {
+        Directory.CreateDirectory(
+            Path.Combine(_root, "src")
+        );
+
+        File.WriteAllText(
+            Path.Combine(_root, "README.md"),
+            string.Empty
+        );
+
+        File.WriteAllText(
+            Path.Combine(_root, "src", "Program.cs"),
+            string.Empty
+        );
+
+        var files =
+            _fileSystem.GetFiles(
+                _project
+            );
+
+        Assert.Equal(
+            [
+                "README.md",
+            Path.Combine("src", "Program.cs"),
+        ],
+            files.Select(
+                file => file.RelativePath
+            )
+        );
+    }
+
+    [Fact]
+    public void GetFiles_IgnoresIgnoredDirectories()
+    {
+        Directory.CreateDirectory(
+            Path.Combine(_root, "src")
+        );
+
+        Directory.CreateDirectory(
+            Path.Combine(_root, "bin")
+        );
+
+        Directory.CreateDirectory(
+            Path.Combine(_root, ".git")
+        );
+
+        File.WriteAllText(
+            Path.Combine(_root, "src", "Real.cs"),
+            string.Empty
+        );
+
+        File.WriteAllText(
+            Path.Combine(_root, "bin", "Generated.dll"),
+            string.Empty
+        );
+
+        File.WriteAllText(
+            Path.Combine(_root, ".git", "config"),
+            string.Empty
+        );
+
+        var files =
+            _fileSystem.GetFiles(
+                _project
+            );
+
+        var file =
+            Assert.Single(files);
+
+        Assert.Equal(
+            Path.Combine("src", "Real.cs"),
+            file.RelativePath
+        );
+    }
+
+    [Fact]
+    public void GetFiles_DoesNotTraverseDirectorySymlink()
+    {
+        var outside = Path.Combine(
+            Path.GetTempPath(),
+            $"wayfinder-outside-{Guid.NewGuid():N}"
+        );
+
+        Directory.CreateDirectory(outside);
+
+        try
+        {
+            File.WriteAllText(
+                Path.Combine(outside, "Secret.txt"),
+                "secret"
+            );
+
+            Directory.CreateSymbolicLink(
+                Path.Combine(_root, "external"),
+                outside
+            );
+
+            var files =
+                _fileSystem.GetFiles(
+                    _project
+                );
+
+            Assert.Empty(files);
+        }
+        finally
+        {
+            if (Directory.Exists(outside))
+            {
+                Directory.Delete(
+                    outside,
+                    recursive: true
+                );
+            }
+        }
+    }
+
     public void Dispose()
     {
         if (Directory.Exists(_root))

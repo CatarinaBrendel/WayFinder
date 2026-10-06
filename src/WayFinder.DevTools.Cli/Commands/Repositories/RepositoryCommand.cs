@@ -16,9 +16,11 @@ public static class RepositoryCommand
             );
 
         command.Subcommands.Add(
-            RepositoryReadCommand.Create(
-                services
-            )
+            RepositoryReadCommand.Create(services)
+        );
+
+        command.Subcommands.Add(
+            RepositorySearchCommand.Create(services)
         );
 
         return command;

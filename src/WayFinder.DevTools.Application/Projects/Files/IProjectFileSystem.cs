@@ -25,4 +25,8 @@ public interface IProjectFileSystem
         string relativePath,
         int maxBytes
     );
+
+    IReadOnlyCollection<ProjectFile> GetFiles(
+        ProjectContext project
+    );
 }

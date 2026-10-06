@@ -1,3 +1,4 @@
+using System.IO.Enumeration;
 using WayFinder.DevTools.Application.Projects;
 using WayFinder.DevTools.Application.Projects.Files;
 
@@ -57,14 +58,31 @@ public sealed class ProjectFileSystem : IProjectFileSystem
         string searchPattern
     )
     {
-        ArgumentException.ThrowIfNullOrWhiteSpace(searchPattern);
+        ArgumentException.ThrowIfNullOrWhiteSpace(
+            searchPattern
+        );
 
-        var files = new List<ProjectFile>();
+        return EnumerateFiles(project)
+            .Where(
+                file => FileSystemName.MatchesSimpleExpression(
+                    searchPattern,
+                    Path.GetFileName(file.RelativePath),
+                    ignoreCase: false
+                )
+            )
+            .ToArray();
+    }
+
+    private static IReadOnlyCollection<ProjectFile> EnumerateFiles(
+        ProjectContext project
+    )
+    {
+        var files =
+            new List<ProjectFile>();
 
         EnumerateDirectory(
             project,
             new DirectoryInfo(project.RootPath),
-            searchPattern,
             files
         );
 
@@ -79,17 +97,23 @@ public sealed class ProjectFileSystem : IProjectFileSystem
     private static void EnumerateDirectory(
         ProjectContext project,
         DirectoryInfo directory,
-        string searchPattern,
         ICollection<ProjectFile> files
     )
     {
-        foreach (var file in directory.EnumerateFiles(searchPattern))
+        foreach (var file in directory.EnumerateFiles())
         {
-            var path = ResolveExistingPath(project, file.FullName);
+            var path =
+                ResolveExistingPath(
+                    project,
+                    file.FullName
+                );
 
             files.Add(
                 new ProjectFile(
-                    Path.GetRelativePath(project.RootPath, path)
+                    Path.GetRelativePath(
+                        project.RootPath,
+                        path
+                    )
                 )
             );
         }
@@ -107,7 +131,11 @@ public sealed class ProjectFileSystem : IProjectFileSystem
                 continue;
             }
 
-            EnumerateDirectory(project, child, searchPattern, files);
+            EnumerateDirectory(
+                project,
+                child,
+                files
+            );
         }
     }
 
@@ -250,6 +278,13 @@ public sealed class ProjectFileSystem : IProjectFileSystem
             TotalBytes: totalBytes,
             Truncated: totalBytes > maxBytes
         );
+    }
+
+    public IReadOnlyCollection<ProjectFile> GetFiles(
+    ProjectContext project
+)
+    {
+        return EnumerateFiles(project);
     }
 
 }

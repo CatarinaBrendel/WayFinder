@@ -6,6 +6,7 @@ using WayFinder.DevTools.Application.Projects.Inspection;
 using WayFinder.DevTools.Application.Projects.Manifest;
 using WayFinder.DevTools.Application.Projects.Registry;
 using WayFinder.DevTools.Application.Repositories.Reading;
+using WayFinder.DevTools.Application.Repositories.Searching;
 
 namespace WayFinder.DevTools.Infrastructure.Composition;
 
@@ -17,5 +18,6 @@ public sealed record WayFinderServices(
     IProjectManifestReader ProjectManifestReader,
     IProjectInitializer ProjectInitializer,
     IProjectRegistry ProjectRegistry,
-    IRepositoryFileReader RepositoryFileReader
+    IRepositoryFileReader RepositoryFileReader,
+    IRepositorySearcher RepositorySearcher
 );

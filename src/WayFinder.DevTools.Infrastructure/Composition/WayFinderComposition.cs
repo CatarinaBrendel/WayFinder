@@ -8,6 +8,7 @@ using WayFinder.DevTools.Infrastructure.Projects.Initialization;
 using WayFinder.DevTools.Infrastructure.Projects.Manifest;
 using WayFinder.DevTools.Infrastructure.Projects.Registry;
 using WayFinder.DevTools.Infrastructure.Repositories.Reading;
+using WayFinder.DevTools.Infrastructure.Repositories.Searching;
 
 namespace WayFinder.DevTools.Infrastructure.Composition;
 
@@ -20,6 +21,11 @@ public static class WayFinderComposition
 
         var projectFileSystem =
             new ProjectFileSystem();
+
+        var repositorySearcher =
+            new RepositorySearcher(
+                projectFileSystem
+            );
 
         var repositoryFileReader =
             new RepositoryFileReader(
@@ -73,7 +79,8 @@ public static class WayFinderComposition
             ProjectInitializer: projectInitializer,
             ProjectRegistry: projectRegistry,
             Environment: environment,
-            RepositoryFileReader: repositoryFileReader
+            RepositoryFileReader: repositoryFileReader,
+            RepositorySearcher: repositorySearcher
         );
     }
 }
