@@ -1,4 +1,5 @@
 using System.CommandLine;
+using WayFinder.DevTools.Cli.Presentation;
 using WayFinder.DevTools.Infrastructure.Composition;
 
 namespace WayFinder.DevTools.Cli.Commands.Projects;
@@ -14,7 +15,8 @@ internal static class ProjectRemoveCommand
                 "id"
             )
             {
-                Description = "ID of the registered project to remove",
+                Description =
+                    "ID of the registered project to remove",
                 Arity = ArgumentArity.ExactlyOne,
             };
 
@@ -26,16 +28,19 @@ internal static class ProjectRemoveCommand
         command.Arguments.Add(idArgument);
 
         command.SetAction(
-            parseResult => Execute(
-                services,
-                parseResult.GetValue(idArgument)
-            )
+            parseResult =>
+                Execute(
+                    services,
+                    parseResult.GetValue(
+                        idArgument
+                    )
+                )
         );
 
         return command;
     }
 
-    private static void Execute(
+    private static int Execute(
         WayFinderServices services,
         Guid id
     )
@@ -43,10 +48,10 @@ internal static class ProjectRemoveCommand
         if (id == Guid.Empty)
         {
             Console.Error.WriteLine(
-                "A valid project ID is required."
+                $"{ConsoleTheme.ErrorMark} A valid project ID is required."
             );
 
-            return;
+            return ExitCodes.Failure;
         }
 
         var project =
@@ -55,23 +60,23 @@ internal static class ProjectRemoveCommand
         if (project is null)
         {
             Console.Error.WriteLine(
-                $"No registered project found with ID '{id}'."
+                $"{ConsoleTheme.ErrorMark} No registered project found with ID '{id}'."
             );
 
-            return;
+            return ExitCodes.Failure;
         }
 
         if (!services.ProjectRegistry.Remove(id))
         {
             Console.Error.WriteLine(
-                $"Could not remove registered project '{id}'."
+                $"{ConsoleTheme.ErrorMark} Could not remove registered project '{id}'."
             );
 
-            return;
+            return ExitCodes.Failure;
         }
 
         Console.WriteLine(
-            $"Removed {project.Name}"
+            $"{ConsoleTheme.SuccessMark} Removed {ConsoleTheme.Bold(project.Name)}"
         );
 
         Console.WriteLine(
@@ -79,8 +84,23 @@ internal static class ProjectRemoveCommand
         );
 
         Console.WriteLine();
+
         Console.WriteLine(
-            "AI-facing WayFinder adapters no longer have access to this project."
+            ConsoleTheme.Bold(
+                "AI visibility"
+            )
         );
+
+        Console.WriteLine(
+            $"  Read     {ConsoleTheme.WarningMark} {ConsoleTheme.Warning("revoked")}"
+        );
+
+        Console.WriteLine();
+
+        Console.WriteLine(
+            "This waypoint is no longer visible to AI adapters."
+        );
+
+        return ExitCodes.Success;
     }
 }

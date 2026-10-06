@@ -1,4 +1,5 @@
 using System.CommandLine;
+using WayFinder.DevTools.Cli.Presentation;
 using WayFinder.DevTools.Infrastructure.Composition;
 
 namespace WayFinder.DevTools.Cli.Commands.Repositories;
@@ -50,7 +51,7 @@ internal static class RepositorySearchCommand
         if (string.IsNullOrWhiteSpace(query))
         {
             Console.Error.WriteLine(
-                "A search query is required."
+                $"{ConsoleTheme.ErrorMark} A search query is required."
             );
 
             return ExitCodes.Failure;
@@ -64,7 +65,7 @@ internal static class RepositorySearchCommand
         if (project is null)
         {
             Console.Error.WriteLine(
-                "No Git project found."
+                $"{ConsoleTheme.ErrorMark} No Git project found."
             );
 
             return ExitCodes.Failure;
@@ -79,7 +80,9 @@ internal static class RepositorySearchCommand
         foreach (var match in result.Matches)
         {
             Console.WriteLine(
-                $"{match.Path}:{match.LineNumber}"
+                ConsoleTheme.Secondary(
+                    $"{match.Path}:{match.LineNumber}"
+                )
             );
 
             Console.WriteLine(
@@ -92,19 +95,41 @@ internal static class RepositorySearchCommand
             Console.WriteLine();
         }
 
-        Console.WriteLine(
-            result.Matches.Count == 1
-                ? "1 match"
-                : $"{result.Matches.Count} matches"
+        WriteSummary(
+            result.Matches.Count,
+            result.Truncated
         );
 
-        if (result.Truncated)
+        return ExitCodes.Success;
+    }
+
+    private static void WriteSummary(
+        int matchCount,
+        bool truncated
+    )
+    {
+        if (matchCount == 0)
         {
-            Console.Error.WriteLine(
-                "[results truncated]"
+            Console.WriteLine(
+                "No matches found."
             );
+
+            return;
         }
 
-        return ExitCodes.Success;
+        Console.WriteLine(
+            ConsoleTheme.Bold(
+                matchCount == 1
+                    ? "1 match"
+                    : $"{matchCount} matches"
+            )
+        );
+
+        if (truncated)
+        {
+            Console.Error.WriteLine(
+                $"{ConsoleTheme.WarningMark} Results truncated after {matchCount} matches."
+            );
+        }
     }
 }

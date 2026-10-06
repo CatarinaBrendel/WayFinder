@@ -47,6 +47,23 @@ internal static class ConsoleTheme
     ) =>
         Colorize(text, Cyan);
 
+    public static string SuccessMark =>
+    Success("✓");
+
+    public static string WarningMark =>
+        Warning("!");
+
+    public static string ErrorMark =>
+        Error("✗");
+
+    public static string Waypoint =>
+        Accent("◇");
+
+    public static string Rule =>
+        Secondary(
+            "────────────────────────────────────────"
+        );
+
     public static string Bold(
         string text
     ) =>

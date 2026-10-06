@@ -1,5 +1,6 @@
 using System.CommandLine;
 using WayFinder.DevTools.Application.Repositories.Reading;
+using WayFinder.DevTools.Cli.Presentation;
 using WayFinder.DevTools.Infrastructure.Composition;
 
 namespace WayFinder.DevTools.Cli.Commands.Repositories;
@@ -47,14 +48,14 @@ public static class RepositoryReadCommand
     }
 
     private static int Execute(
-    WayFinderServices services,
-    string? path
-)
+        WayFinderServices services,
+        string? path
+    )
     {
         if (string.IsNullOrWhiteSpace(path))
         {
             Console.Error.WriteLine(
-                "A file path is required."
+                $"{ConsoleTheme.ErrorMark} A file path is required."
             );
 
             return ExitCodes.Failure;
@@ -68,7 +69,7 @@ public static class RepositoryReadCommand
         if (project is null)
         {
             Console.Error.WriteLine(
-                "No Git project found."
+                $"{ConsoleTheme.ErrorMark} No Git project found."
             );
 
             return ExitCodes.Failure;
@@ -94,7 +95,8 @@ public static class RepositoryReadCommand
                 }
 
                 Console.Error.WriteLine(
-                    $"[truncated: {result.TotalBytes} bytes total]"
+                    $"{ConsoleTheme.WarningMark} Output truncated at 64 KiB " +
+                    $"({result.TotalBytes} bytes total)."
                 );
             }
 
@@ -103,7 +105,7 @@ public static class RepositoryReadCommand
         catch (BinaryFileNotSupportedException exception)
         {
             Console.Error.WriteLine(
-                exception.Message
+                $"{ConsoleTheme.ErrorMark} {exception.Message}"
             );
 
             return ExitCodes.Failure;
@@ -111,7 +113,7 @@ public static class RepositoryReadCommand
         catch (FileNotFoundException)
         {
             Console.Error.WriteLine(
-                $"File not found: {path}"
+                $"{ConsoleTheme.ErrorMark} File not found: {path}"
             );
 
             return ExitCodes.Failure;
@@ -119,7 +121,7 @@ public static class RepositoryReadCommand
         catch (UnauthorizedAccessException exception)
         {
             Console.Error.WriteLine(
-                exception.Message
+                $"{ConsoleTheme.ErrorMark} {exception.Message}"
             );
 
             return ExitCodes.Failure;
