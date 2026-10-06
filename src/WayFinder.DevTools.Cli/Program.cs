@@ -25,6 +25,10 @@ rootCommand.Subcommands.Add(
     DoctorCommand.Create(services)
 );
 
+rootCommand.Subcommands.Add(
+    CompletionCommand.Create(services)
+);
+
 if (args.Length == 0
     || (args.Length == 1
         && (args[0] == "--help"
