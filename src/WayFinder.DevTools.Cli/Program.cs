@@ -1,13 +1,9 @@
 using System.CommandLine;
-using WayFinder.DevTools.Application.Projects.Detection;
-using WayFinder.DevTools.Application.Projects.Initialization;
 using WayFinder.DevTools.Application.Projects.Inspection;
 using WayFinder.DevTools.Application.Projects.Manifest;
-using WayFinder.DevTools.Infrastructure.Projects;
-using WayFinder.DevTools.Infrastructure.Projects.Detection;
-using WayFinder.DevTools.Infrastructure.Projects.Files;
-using WayFinder.DevTools.Infrastructure.Projects.Initialization;
-using WayFinder.DevTools.Infrastructure.Projects.Manifest;
+using WayFinder.DevTools.Infrastructure.Composition;
+
+var services = WayFinderComposition.Create();
 
 var rootCommand = new RootCommand("WayFinder personal developer tools");
 
@@ -22,11 +18,11 @@ var projectInitCommand = new Command(
     "init",
     "Create WayFinder metadata for the current project"
 );
-
 projectInfoCommand.SetAction(_ =>
 {
-    var locator = new FileSystemProjectLocator();
-    var project = locator.Locate(Environment.CurrentDirectory);
+    var project = services.ProjectLocator.Locate(
+        Environment.CurrentDirectory
+    );
 
     if (project is null)
     {
@@ -34,34 +30,11 @@ projectInfoCommand.SetAction(_ =>
         return;
     }
 
-    var fileSystem = new ProjectFileSystem();
-
-    var manifestReader =
-        new JsonProjectManifestReader(fileSystem);
-
     var manifest =
-        manifestReader.Read(project);
+        services.ProjectManifestReader.Read(project);
 
-    var signatureProvider =
-        new JsonTechnologySignatureProvider();
-
-    var technologyDetectors = signatureProvider
-        .GetSignatures()
-        .Select(
-            signature => (IProjectDetector)
-                new TechnologySignatureDetector(
-                    fileSystem,
-                    signature
-                )
-        );
-
-    var inspector = new ProjectInspector(
-        technologyDetectors.Append(
-            new GuidanceProjectDetector(fileSystem)
-        )
-    );
-
-    var inspection = inspector.Inspect(project);
+    var inspection =
+        services.ProjectInspector.Inspect(project);
 
     Console.WriteLine(project.Name);
     Console.WriteLine(new string('─', project.Name.Length));
@@ -90,8 +63,9 @@ projectInfoCommand.SetAction(_ =>
 
 projectInitCommand.SetAction(_ =>
 {
-    var locator = new FileSystemProjectLocator();
-    var project = locator.Locate(Environment.CurrentDirectory);
+    var project = services.ProjectLocator.Locate(
+        Environment.CurrentDirectory
+    );
 
     if (project is null)
     {
@@ -99,9 +73,9 @@ projectInitCommand.SetAction(_ =>
         return;
     }
 
-    var fileSystem = new ProjectFileSystem();
-
-    if (fileSystem.FileExists(project, "wayfinder.json"))
+    if (services.ProjectFileSystem.FileExists(
+            project,
+            "wayfinder.json"))
     {
         Console.Error.WriteLine(
             "This project already contains wayfinder.json."
@@ -110,33 +84,8 @@ projectInitCommand.SetAction(_ =>
         return;
     }
 
-    var signatureProvider =
-        new JsonTechnologySignatureProvider();
-
-    var technologyDetectors = signatureProvider
-        .GetSignatures()
-        .Select(
-            signature => (IProjectDetector)
-                new TechnologySignatureDetector(
-                    fileSystem,
-                    signature
-                )
-        );
-
-    var inspector = new ProjectInspector(
-        technologyDetectors.Append(
-            new GuidanceProjectDetector(fileSystem)
-        )
-    );
-
-    IProjectInitializer initializer =
-        new ProjectInitializer(
-            inspector,
-            fileSystem
-        );
-
     var initialization =
-        initializer.Prepare(project);
+        services.ProjectInitializer.Prepare(project);
 
     Console.WriteLine("WayFinder will create:");
     Console.WriteLine(
@@ -176,7 +125,7 @@ projectInitCommand.SetAction(_ =>
         return;
     }
 
-    initializer.Initialize(
+    services.ProjectInitializer.Initialize(
         project,
         initialization
     );
