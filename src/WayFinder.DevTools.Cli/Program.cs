@@ -25,6 +25,7 @@ projectInfoCommand.SetAction(_ =>
     var inspector = new ProjectInspector(
     [
         new DotNetProjectDetector(fileSystem),
+        new NodeProjectDetector(fileSystem),
         new GuidanceProjectDetector(fileSystem),
     ]);
 

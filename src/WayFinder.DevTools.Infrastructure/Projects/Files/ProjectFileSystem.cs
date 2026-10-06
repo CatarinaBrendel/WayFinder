@@ -48,7 +48,12 @@ public sealed class ProjectFileSystem : IProjectFileSystem
             files
         );
 
-        return files;
+        return files
+            .OrderBy(
+                file => file.RelativePath,
+                StringComparer.Ordinal
+            )
+            .ToArray();
     }
 
     private static void EnumerateDirectory(

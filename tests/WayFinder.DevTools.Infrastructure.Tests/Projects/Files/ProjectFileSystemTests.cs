@@ -173,6 +173,51 @@ public sealed class ProjectFileSystemTests : IDisposable
         }
     }
 
+    [Fact]
+    public void FindFiles_ReturnsFilesInDeterministicOrder()
+    {
+        Directory.CreateDirectory(
+            Path.Combine(_root, "zeta")
+        );
+
+        Directory.CreateDirectory(
+            Path.Combine(_root, "alpha")
+        );
+
+        Directory.CreateDirectory(
+            Path.Combine(_root, "middle")
+        );
+
+        File.WriteAllText(
+            Path.Combine(_root, "zeta", "Z.cs"),
+            string.Empty
+        );
+
+        File.WriteAllText(
+            Path.Combine(_root, "alpha", "A.cs"),
+            string.Empty
+        );
+
+        File.WriteAllText(
+            Path.Combine(_root, "middle", "M.cs"),
+            string.Empty
+        );
+
+        var files = _fileSystem.FindFiles(
+            _project,
+            "*.cs"
+        );
+
+        Assert.Equal(
+            [
+                Path.Combine("alpha", "A.cs"),
+            Path.Combine("middle", "M.cs"),
+            Path.Combine("zeta", "Z.cs"),
+        ],
+            files.Select(file => file.RelativePath)
+        );
+    }
+
     public void Dispose()
     {
         if (Directory.Exists(_root))
