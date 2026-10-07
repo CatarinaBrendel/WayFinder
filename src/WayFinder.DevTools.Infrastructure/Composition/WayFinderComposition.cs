@@ -1,6 +1,8 @@
 using WayFinder.DevTools.Application.Projects.Detection;
 using WayFinder.DevTools.Application.Projects.Inspection;
 using WayFinder.DevTools.Infrastructure.Configuration;
+using WayFinder.DevTools.Infrastructure.Context;
+using WayFinder.DevTools.Infrastructure.Context.Estimation;
 using WayFinder.DevTools.Infrastructure.Diagnostics;
 using WayFinder.DevTools.Infrastructure.Projects;
 using WayFinder.DevTools.Infrastructure.Projects.Detection;
@@ -79,6 +81,17 @@ public static class WayFinderComposition
                 projectLocator
             );
 
+        var tokenEstimator =
+            new ApproximateTokenEstimator();
+
+        var contextCompiler =
+            new ContextCompiler(
+                projectFileSystem,
+                repositorySearcher,
+                repositoryFileReader,
+                tokenEstimator
+            );
+
         return new WayFinderServices(
             ProjectLocator: projectLocator,
             ProjectFileSystem: projectFileSystem,
@@ -89,7 +102,8 @@ public static class WayFinderComposition
             Environment: environment,
             RepositoryFileReader: repositoryFileReader,
             RepositorySearcher: repositorySearcher,
-            Doctor: doctor
+            Doctor: doctor,
+            ContextCompiler: contextCompiler
         );
     }
 }

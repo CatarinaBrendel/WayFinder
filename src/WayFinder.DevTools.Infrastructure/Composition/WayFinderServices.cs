@@ -1,4 +1,5 @@
 using WayFinder.DevTools.Application.Configuration;
+using WayFinder.DevTools.Application.Context;
 using WayFinder.DevTools.Application.Diagnostics;
 using WayFinder.DevTools.Application.Projects;
 using WayFinder.DevTools.Application.Projects.Files;
@@ -21,5 +22,6 @@ public sealed record WayFinderServices(
     IProjectRegistry ProjectRegistry,
     IRepositoryFileReader RepositoryFileReader,
     IRepositorySearcher RepositorySearcher,
-    IDoctor Doctor
+    IDoctor Doctor,
+    IContextCompiler ContextCompiler
 );
