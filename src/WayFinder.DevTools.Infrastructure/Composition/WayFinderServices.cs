@@ -6,6 +6,7 @@ using WayFinder.DevTools.Application.Projects.Files;
 using WayFinder.DevTools.Application.Projects.Initialization;
 using WayFinder.DevTools.Application.Projects.Inspection;
 using WayFinder.DevTools.Application.Projects.Manifest;
+using WayFinder.DevTools.Application.Projects.Registration;
 using WayFinder.DevTools.Application.Projects.Registry;
 using WayFinder.DevTools.Application.Repositories.Reading;
 using WayFinder.DevTools.Application.Repositories.Searching;
@@ -23,5 +24,6 @@ public sealed record WayFinderServices(
     IRepositoryFileReader RepositoryFileReader,
     IRepositorySearcher RepositorySearcher,
     IDoctor Doctor,
-    IContextCompiler ContextCompiler
+    IContextCompiler ContextCompiler,
+    IRegisteredProjectResolver RegisteredProjectResolver
 );

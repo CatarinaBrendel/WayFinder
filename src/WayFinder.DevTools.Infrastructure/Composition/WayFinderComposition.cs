@@ -9,6 +9,7 @@ using WayFinder.DevTools.Infrastructure.Projects.Detection;
 using WayFinder.DevTools.Infrastructure.Projects.Files;
 using WayFinder.DevTools.Infrastructure.Projects.Initialization;
 using WayFinder.DevTools.Infrastructure.Projects.Manifest;
+using WayFinder.DevTools.Infrastructure.Projects.Registration;
 using WayFinder.DevTools.Infrastructure.Projects.Registry;
 using WayFinder.DevTools.Infrastructure.Repositories.Reading;
 using WayFinder.DevTools.Infrastructure.Repositories.Searching;
@@ -74,6 +75,11 @@ public static class WayFinderComposition
         var projectRegistry =
             new JsonProjectRegistry(environment);
 
+        var registeredProjectResolver =
+            new RegisteredProjectResolver(
+                projectRegistry
+            );
+
         var doctor =
             new Doctor(
                 environment,
@@ -103,7 +109,8 @@ public static class WayFinderComposition
             RepositoryFileReader: repositoryFileReader,
             RepositorySearcher: repositorySearcher,
             Doctor: doctor,
-            ContextCompiler: contextCompiler
+            ContextCompiler: contextCompiler,
+            RegisteredProjectResolver: registeredProjectResolver
         );
     }
 }
