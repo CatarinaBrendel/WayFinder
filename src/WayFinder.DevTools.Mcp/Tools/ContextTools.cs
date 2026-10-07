@@ -29,9 +29,9 @@ public sealed class ContextTools
     )]
     public ContextResponse Context(
         [Description(
-            "The ID of a project registered for AI access in WayFinder."
+            "The ID or exact name of a project registered for AI access in WayFinder."
         )]
-        string projectId,
+        string project,
 
         [Description(
             "The development task for which repository context is needed."
@@ -44,16 +44,6 @@ public sealed class ContextTools
         int tokenBudget = DefaultTokenBudget
     )
     {
-        if (!Guid.TryParse(
-                projectId,
-                out var parsedProjectId))
-        {
-            throw new ArgumentException(
-                "Project ID must be a valid GUID.",
-                nameof(projectId)
-            );
-        }
-
         if (string.IsNullOrWhiteSpace(
                 task))
         {
@@ -72,14 +62,14 @@ public sealed class ContextTools
             );
         }
 
-        var project =
+        var projectContext =
             _services.RegisteredProjectResolver.Resolve(
-                parsedProjectId
+                project
             );
 
         var package =
             _services.ContextCompiler.Compile(
-                project,
+                projectContext,
                 new ContextRequest(
                     task,
                     tokenBudget
