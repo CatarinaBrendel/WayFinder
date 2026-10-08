@@ -40,6 +40,15 @@ internal static class ContextCommand
                     "Explain how repository files were selected.",
             };
 
+        var contentOption =
+            new Option<bool>(
+                "--content"
+            )
+            {
+                Description =
+                    "Write the compiled repository context to standard output.",
+            };
+
         var command =
             new Command(
                 "context",
@@ -49,6 +58,7 @@ internal static class ContextCommand
                 taskArgument,
                 budgetOption,
                 explainOption,
+                contentOption,
             };
 
         command.SetAction(
@@ -68,12 +78,17 @@ internal static class ContextCommand
                     parseResult.GetValue(
                         explainOption
                     );
+                var content =
+                    parseResult.GetValue(
+                        contentOption
+                    );
 
                 return Execute(
                     services,
                     task!,
                     budget,
-                    explain
+                    explain,
+                    content
                 );
             }
         );
@@ -85,7 +100,8 @@ internal static class ContextCommand
         WayFinderServices services,
         string task,
         int budget,
-        bool explain
+        bool explain,
+        bool content
     )
     {
         if (string.IsNullOrWhiteSpace(
@@ -127,18 +143,28 @@ internal static class ContextCommand
             return ExitCodes.Failure;
         }
 
-        var package =
-            services.ContextCompiler.Compile(
-                project,
-                new ContextRequest(
-                    task,
-                    budget
-                )
-            );
+        ContextPackage package;
 
-        WritePackage(
-            package
-        );
+        using (ConsoleSpinner.Start(
+                   "Mapping the terrain..."
+               ))
+        {
+            package =
+                services.ContextCompiler.Compile(
+                    project,
+                    new ContextRequest(
+                        task,
+                        budget
+                    )
+                );
+        }
+
+        if (content)
+        {
+            WritePackage(
+                package
+            );
+        }
 
         WriteDiagnostics(
             package
