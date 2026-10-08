@@ -226,10 +226,10 @@ public sealed class ProjectFileSystem : IProjectFileSystem
     }
 
     public ProjectFileRead Read(
-    ProjectContext project,
-    string relativePath,
-    int maxBytes
-)
+        ProjectContext project,
+        string relativePath,
+        int maxBytes
+    )
     {
         return Read(
             project,
@@ -319,6 +319,91 @@ public sealed class ProjectFileSystem : IProjectFileSystem
 )
     {
         return EnumerateFiles(project);
+    }
+
+
+    public IReadOnlyCollection<ProjectDirectoryEntry> GetEntries(
+        ProjectContext project,
+        string relativePath
+    )
+    {
+        ArgumentNullException.ThrowIfNull(relativePath);
+
+        var path = relativePath.Length == 0
+            ? Path.GetFullPath(project.RootPath)
+            : ResolvePath(project, relativePath);
+
+        if (!Directory.Exists(path))
+        {
+            throw new DirectoryNotFoundException(
+                $"The directory '{relativePath}' does not exist."
+            );
+        }
+
+        var directory = new DirectoryInfo(path);
+
+        if (directory.LinkTarget is not null)
+        {
+            throw new UnauthorizedAccessException(
+                "Directory symbolic links cannot be traversed."
+            );
+        }
+
+        var entries = new List<ProjectDirectoryEntry>();
+
+        foreach (var child in directory.EnumerateDirectories())
+        {
+            if (IgnoredDirectories.Contains(child.Name))
+            {
+                continue;
+            }
+
+            if (child.LinkTarget is not null)
+            {
+                // V1: don't expose directory symlinks in the project tree.
+                continue;
+            }
+
+            var childPath = ResolveExistingPath(
+                project,
+                child.FullName
+            );
+
+            entries.Add(
+                new ProjectDirectoryEntry(
+                    child.Name,
+                    Path.GetRelativePath(
+                        project.RootPath,
+                        childPath
+                    ),
+                    IsDirectory: true
+                )
+            );
+        }
+
+        foreach (var file in directory.EnumerateFiles())
+        {
+            var filePath = ResolveExistingPath(
+                project,
+                file.FullName
+            );
+
+            entries.Add(
+                new ProjectDirectoryEntry(
+                    file.Name,
+                    Path.GetRelativePath(
+                        project.RootPath,
+                        filePath
+                    ),
+                    IsDirectory: false
+                )
+            );
+        }
+
+        return entries
+            .OrderByDescending(entry => entry.IsDirectory)
+            .ThenBy(entry => entry.Name, StringComparer.Ordinal)
+            .ToArray();
     }
 
 }

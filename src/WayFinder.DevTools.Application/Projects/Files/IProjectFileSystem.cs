@@ -36,4 +36,9 @@ public interface IProjectFileSystem
     IReadOnlyCollection<ProjectFile> GetFiles(
         ProjectContext project
     );
+
+    IReadOnlyCollection<ProjectDirectoryEntry> GetEntries(
+        ProjectContext project,
+        string relativePath
+    );
 }

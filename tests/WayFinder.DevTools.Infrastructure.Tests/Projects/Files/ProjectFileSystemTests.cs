@@ -681,6 +681,236 @@ public sealed class ProjectFileSystemTests : IDisposable
         );
     }
 
+    [Fact]
+    public void GetEntries_ReturnsRootEntries()
+    {
+        Directory.CreateDirectory(
+            Path.Combine(_root, "src")
+        );
+
+        Directory.CreateDirectory(
+            Path.Combine(_root, "tests")
+        );
+
+        File.WriteAllText(
+            Path.Combine(_root, "README.md"),
+            string.Empty
+        );
+
+        File.WriteAllText(
+            Path.Combine(_root, "wayfinder.json"),
+            string.Empty
+        );
+
+        var entries = _fileSystem.GetEntries(
+            _project,
+            ""
+        );
+
+        Assert.Collection(
+            entries,
+            entry =>
+            {
+                Assert.Equal("src", entry.Name);
+                Assert.Equal("src", entry.Path);
+                Assert.True(entry.IsDirectory);
+            },
+            entry =>
+            {
+                Assert.Equal("tests", entry.Name);
+                Assert.Equal("tests", entry.Path);
+                Assert.True(entry.IsDirectory);
+            },
+            entry =>
+            {
+                Assert.Equal("README.md", entry.Name);
+                Assert.Equal("README.md", entry.Path);
+                Assert.False(entry.IsDirectory);
+            },
+            entry =>
+            {
+                Assert.Equal("wayfinder.json", entry.Name);
+                Assert.Equal("wayfinder.json", entry.Path);
+                Assert.False(entry.IsDirectory);
+            }
+        );
+    }
+
+    [Fact]
+    public void GetEntries_ReturnsOnlyImmediateChildren()
+    {
+        Directory.CreateDirectory(
+            Path.Combine(_root, "src", "Application")
+        );
+
+        File.WriteAllText(
+            Path.Combine(_root, "src", "Application", "Foo.cs"),
+            string.Empty
+        );
+
+        File.WriteAllText(
+            Path.Combine(_root, "src", "Program.cs"),
+            string.Empty
+        );
+
+        var entries = _fileSystem.GetEntries(
+            _project,
+            "src"
+        );
+
+        Assert.Collection(
+            entries,
+            entry =>
+            {
+                Assert.Equal("Application", entry.Name);
+                Assert.Equal(
+                    Path.Combine("src", "Application"),
+                    entry.Path
+                );
+                Assert.True(entry.IsDirectory);
+            },
+            entry =>
+            {
+                Assert.Equal("Program.cs", entry.Name);
+                Assert.Equal(
+                    Path.Combine("src", "Program.cs"),
+                    entry.Path
+                );
+                Assert.False(entry.IsDirectory);
+            }
+        );
+    }
+
+    [Fact]
+    public void GetEntries_ExcludesIgnoredDirectories()
+    {
+        Directory.CreateDirectory(
+            Path.Combine(_root, ".git")
+        );
+
+        Directory.CreateDirectory(
+            Path.Combine(_root, "bin")
+        );
+
+        Directory.CreateDirectory(
+            Path.Combine(_root, "obj")
+        );
+
+        Directory.CreateDirectory(
+            Path.Combine(_root, "src")
+        );
+
+        var entries = _fileSystem.GetEntries(
+            _project,
+            ""
+        );
+
+        var entry = Assert.Single(entries);
+
+        Assert.Equal("src", entry.Name);
+        Assert.True(entry.IsDirectory);
+    }
+
+    [Fact]
+    public void GetEntries_ReturnsDirectoriesBeforeFilesAndSortsOrdinally()
+    {
+        File.WriteAllText(
+            Path.Combine(_root, "z.txt"),
+            string.Empty
+        );
+
+        Directory.CreateDirectory(
+            Path.Combine(_root, "Zoo")
+        );
+
+        File.WriteAllText(
+            Path.Combine(_root, "a.txt"),
+            string.Empty
+        );
+
+        Directory.CreateDirectory(
+            Path.Combine(_root, "Alpha")
+        );
+
+        var entries = _fileSystem.GetEntries(
+            _project,
+            ""
+        );
+
+        Assert.Equal(
+            ["Alpha", "Zoo", "a.txt", "z.txt"],
+            entries.Select(entry => entry.Name)
+        );
+    }
+
+    [Fact]
+    public void GetEntries_ForParentTraversal_Throws()
+    {
+        Assert.Throws<UnauthorizedAccessException>(
+            () => _fileSystem.GetEntries(
+                _project,
+                "../outside"
+            )
+        );
+    }
+
+    [Fact]
+    public void GetEntries_ForAbsolutePath_Throws()
+    {
+        var absolutePath = Path.GetFullPath(
+            Path.Combine(_root, "..")
+        );
+
+        Assert.Throws<UnauthorizedAccessException>(
+            () => _fileSystem.GetEntries(
+                _project,
+                absolutePath
+            )
+        );
+    }
+
+    [Fact]
+    public void GetEntries_ForNonexistentDirectory_Throws()
+    {
+        Assert.Throws<DirectoryNotFoundException>(
+            () => _fileSystem.GetEntries(
+                _project,
+                "does-not-exist"
+            )
+        );
+    }
+
+    [Fact]
+    public void GetEntries_DoesNotExposeDirectorySymlink()
+    {
+        var realDirectory = Path.Combine(
+            _root,
+            "real"
+        );
+
+        Directory.CreateDirectory(realDirectory);
+
+        Directory.CreateSymbolicLink(
+            Path.Combine(_root, "linked"),
+            realDirectory
+        );
+
+        var entries = _fileSystem.GetEntries(
+            _project,
+            ""
+        );
+
+        Assert.Contains(
+            entries,
+            entry => entry.Name == "real"
+        );
+
+        Assert.DoesNotContain(
+            entries,
+            entry => entry.Name == "linked"
+        );
+    }
+
     public void Dispose()
     {
         if (Directory.Exists(_root))

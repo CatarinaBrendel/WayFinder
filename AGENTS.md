@@ -514,8 +514,11 @@ project-root containment.
 
 AI-facing tools must resolve project access through the
 registered-project resolver before invoking repository operations. MCP
-callers currently address registered projects by ID; arbitrary
-filesystem roots are never accepted as project selectors.
+tools that operate on a registered project accept either its authoritative
+GUID or its exact registered name. Exact-name matching is ordinal
+case-insensitive; GUID-shaped input does not fall back to name lookup, and
+ambiguous duplicate names must be rejected. Arbitrary filesystem roots are
+never accepted as project selectors.
 
 ## CLI Output
 
@@ -642,6 +645,16 @@ context
 Do not respond to every insufficient context package by automatically
 increasing the context budget. Prefer targeted follow-up exploration
 when the missing information can be identified.
+
+The MCP adapter currently uses a default context budget of 4,000 estimated
+tokens. This is adapter policy rather than a `ContextCompiler` invariant;
+callers may explicitly request a different positive budget. Copilot CLI
+dogfooding compared 8,000, 4,000, and 2,000 token budgets on the same
+repository investigation. The 8,000-token response was externalized by the
+client as too large to read at once, while 4,000 remained directly consumable
+and still provided useful orientation. The 2,000-token run also succeeded but
+required more follow-up exploration. Treat 4,000 as a practical MCP default
+observed through dogfooding, not as a provider-neutral optimum.
 
 ------------------------------------------------------------------------
 
@@ -913,6 +926,40 @@ repo_search(project: "DeadRoute", query: "EditorPanel")
 The session used 1.16 AIC according to Copilot CLI. Treat this as a
 dogfooding observation and an initial efficiency baseline, not as
 provider-neutral billing telemetry.
+
+Further Copilot CLI dogfooding exercised the complete intended investigation
+workflow against `WayFinder.DevTools`:
+
+``` text
+context(project: "WayFinder.DevTools", task: ...)
+→ targeted repo_search for missing evidence
+→ repo_read for identified implementation files
+→ further exact-symbol searches and reads as dependencies were discovered
+```
+
+The investigation correctly traced technology detection through the generic
+detector contracts, `TechnologySignatureDetector`,
+`JsonTechnologySignatureProvider`, the embedded `technologies.json` catalog,
+composition, project inspection, and the project filesystem. This demonstrated
+that the current generic read-only primitives can support a realistic source
+investigation without project-specific retrieval rules.
+
+MCP tool descriptions should communicate their intended roles: `projects` is
+for discovering or confirming registered project identifiers when needed;
+`context` is the preferred starting point for broad development-task
+investigation; `repo_search` is a targeted literal follow-up search; and
+`repo_read` is targeted source inspection, with bounded line ranges preferred
+when only part of a file is needed. `projects` is not a prerequisite when an
+exact registered project name or GUID is already known.
+
+The current retrieval/ranking behavior is sufficient for this milestone. Do
+not add stemming, synonym expansion, embeddings, provider-specific heuristics,
+or further scoring complexity without new evidence of a durable problem.
+Dogfooding should continue to distinguish WayFinder defects from individual
+client/model tool-selection behavior.
+
+Cross-client validation with additional MCP clients such as Claude remains a
+future validation item and is not a prerequisite for closing this milestone.
 
 Do not add a separate byte/character ceiling to ranged reads solely for
 the theoretical case of extremely long individual lines. Revisit that
