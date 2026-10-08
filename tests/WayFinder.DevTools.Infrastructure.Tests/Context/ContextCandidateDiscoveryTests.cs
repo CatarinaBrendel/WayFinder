@@ -209,47 +209,6 @@ public sealed class ContextCandidateDiscoveryTests
         );
     }
 
-    public void Dispose()
-    {
-        if (Directory.Exists(
-                _rootPath))
-        {
-            Directory.Delete(
-                _rootPath,
-                recursive: true
-            );
-        }
-    }
-
-    private void WriteFile(
-        string relativePath,
-        string content
-    )
-    {
-        var path =
-            Path.Combine(
-                _rootPath,
-                relativePath
-            );
-
-        var directory =
-            Path.GetDirectoryName(
-                path
-            );
-
-        if (directory is not null)
-        {
-            Directory.CreateDirectory(
-                directory
-            );
-        }
-
-        File.WriteAllText(
-            path,
-            content
-        );
-    }
-
     [Fact]
     public void Discover_PreservesContentMatchLineNumbers()
     {
@@ -340,4 +299,149 @@ public sealed class ContextCandidateDiscoveryTests
             candidate.ContentMatches
         );
     }
+
+    [Fact]
+    public void Discover_MatchesCompleteFilenameComponent()
+    {
+        WriteFile(
+            "src/TimedNetworkScanOperation.cs",
+            "public sealed class Example { }"
+        );
+
+        var result =
+            _discovery.Discover(
+                _project,
+                ["timed"]
+            );
+
+        var candidate =
+            Assert.Single(result);
+
+        Assert.Equal(
+            ["timed"],
+            candidate.PathMatchedTerms
+        );
+    }
+
+    [Fact]
+    public void Discover_DoesNotMatchTermInsideFilenameComponent()
+    {
+        WriteFile(
+            "src/FileReadDiscoveryHandler.cs",
+            "public sealed class Example { }"
+        );
+
+        var result =
+            _discovery.Discover(
+                _project,
+                ["over"]
+            );
+
+        Assert.Empty(result);
+    }
+
+    [Fact]
+    public void Discover_DoesNotPrefixMatchFilenameComponent()
+    {
+        WriteFile(
+            "src/TimedNetworkScanOperation.cs",
+            "public sealed class Example { }"
+        );
+
+        var result =
+            _discovery.Discover(
+                _project,
+                ["time"]
+            );
+
+        Assert.Empty(result);
+    }
+
+    [Fact]
+    public void Discover_MatchesCamelCaseFilenameComponent()
+    {
+        WriteFile(
+            "src/DefenderAwarenessHandler.cs",
+            "public sealed class Example { }"
+        );
+
+        var result =
+            _discovery.Discover(
+                _project,
+                ["awareness"]
+            );
+
+        var candidate =
+            Assert.Single(result);
+
+        Assert.Equal(
+            ["awareness"],
+            candidate.PathMatchedTerms
+        );
+    }
+
+    [Fact]
+    public void Discover_MatchesAcronymFilenameComponent()
+    {
+        WriteFile(
+            "src/HTTPClientFactory.cs",
+            "public sealed class Example { }"
+        );
+
+        var result =
+            _discovery.Discover(
+                _project,
+                ["http", "client"]
+            );
+
+        var candidate =
+            Assert.Single(result);
+
+        Assert.Equal(
+            ["client", "http"],
+            candidate.PathMatchedTerms
+        );
+    }
+
+    public void Dispose()
+    {
+        if (Directory.Exists(
+                _rootPath))
+        {
+            Directory.Delete(
+                _rootPath,
+                recursive: true
+            );
+        }
+    }
+
+    private void WriteFile(
+        string relativePath,
+        string content
+    )
+    {
+        var path =
+            Path.Combine(
+                _rootPath,
+                relativePath
+            );
+
+        var directory =
+            Path.GetDirectoryName(
+                path
+            );
+
+        if (directory is not null)
+        {
+            Directory.CreateDirectory(
+                directory
+            );
+        }
+
+        File.WriteAllText(
+            path,
+            content
+        );
+    }
+
 }

@@ -69,11 +69,16 @@ internal sealed class ContextCandidateDiscovery
                     file.RelativePath
                 );
 
+            var components =
+                SplitIdentifier(
+                    fileName
+                );
+
             foreach (var term in terms)
             {
-                if (!fileName.Contains(
+                if (!components.Contains(
                         term,
-                        StringComparison.OrdinalIgnoreCase))
+                        StringComparer.OrdinalIgnoreCase))
                 {
                     continue;
                 }
@@ -206,5 +211,96 @@ internal sealed class ContextCandidateDiscovery
                     .ToArray()
             );
         }
+    }
+
+    private static IReadOnlyCollection<string> SplitIdentifier(
+        string value
+    )
+    {
+        if (string.IsNullOrEmpty(value))
+        {
+            return [];
+        }
+
+        var components =
+            new List<string>();
+
+        var start = 0;
+
+        for (var index = 1; index < value.Length; index++)
+        {
+            var current = value[index];
+            var previous = value[index - 1];
+
+            if (!char.IsLetterOrDigit(current))
+            {
+                AddComponent(
+                    value,
+                    start,
+                    index,
+                    components
+                );
+
+                start = index + 1;
+                continue;
+            }
+
+            if (!char.IsLetterOrDigit(previous))
+            {
+                start = index;
+                continue;
+            }
+
+            var startsNewWord =
+                char.IsUpper(current)
+                && char.IsLower(previous);
+
+            var endsAcronym =
+                char.IsUpper(current)
+                && char.IsUpper(previous)
+                && index + 1 < value.Length
+                && char.IsLower(value[index + 1]);
+
+            if (!startsNewWord
+                && !endsAcronym)
+            {
+                continue;
+            }
+
+            AddComponent(
+                value,
+                start,
+                index,
+                components
+            );
+
+            start = index;
+        }
+
+        AddComponent(
+            value,
+            start,
+            value.Length,
+            components
+        );
+
+        return components;
+    }
+
+    private static void AddComponent(
+        string value,
+        int start,
+        int end,
+        ICollection<string> components
+    )
+    {
+        if (end <= start)
+        {
+            return;
+        }
+
+        components.Add(
+            value[start..end]
+        );
     }
 }
