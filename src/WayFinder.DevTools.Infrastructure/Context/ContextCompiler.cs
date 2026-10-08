@@ -3,7 +3,6 @@ using WayFinder.DevTools.Application.Context.Estimation;
 using WayFinder.DevTools.Application.Projects;
 using WayFinder.DevTools.Application.Projects.Files;
 using WayFinder.DevTools.Application.Repositories.Reading;
-using WayFinder.DevTools.Application.Repositories.Searching;
 
 namespace WayFinder.DevTools.Infrastructure.Context;
 
@@ -26,17 +25,12 @@ public sealed class ContextCompiler
 
     public ContextCompiler(
         IProjectFileSystem fileSystem,
-        IRepositorySearcher repositorySearcher,
         IRepositoryFileReader fileReader,
         ITokenEstimator tokenEstimator
     )
     {
         ArgumentNullException.ThrowIfNull(
             fileSystem
-        );
-
-        ArgumentNullException.ThrowIfNull(
-            repositorySearcher
         );
 
         _fileReader =
@@ -56,8 +50,7 @@ public sealed class ContextCompiler
 
         _candidateDiscovery =
             new ContextCandidateDiscovery(
-                fileSystem,
-                repositorySearcher
+                fileSystem
             );
 
         _candidateRanker =

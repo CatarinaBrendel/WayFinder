@@ -93,7 +93,6 @@ public static class WayFinderComposition
         var contextCompiler =
             new ContextCompiler(
                 projectFileSystem,
-                repositorySearcher,
                 repositoryFileReader,
                 tokenEstimator
             );

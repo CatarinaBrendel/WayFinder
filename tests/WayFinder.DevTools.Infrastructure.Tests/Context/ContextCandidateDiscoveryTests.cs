@@ -35,15 +35,9 @@ public sealed class ContextCandidateDiscoveryTests
         var fileSystem =
             new ProjectFileSystem();
 
-        var searcher =
-            new RepositorySearcher(
-                fileSystem
-            );
-
         _discovery =
             new ContextCandidateDiscovery(
-                fileSystem,
-                searcher
+                fileSystem
             );
     }
 
@@ -400,6 +394,54 @@ public sealed class ContextCandidateDiscoveryTests
         Assert.Equal(
             ["client", "http"],
             candidate.PathMatchedTerms
+        );
+    }
+
+    [Fact]
+    public void Discover_FindsContentMatchesAcrossAllEligibleFiles()
+    {
+        for (var index = 0;
+             index < 60;
+             index++)
+        {
+            WriteFile(
+                $"src/A{index:D2}.cs",
+                "common"
+            );
+        }
+
+        WriteFile(
+            "src/ZTarget.cs",
+            """
+        common
+        distinctive
+        """
+        );
+
+        var candidates =
+            _discovery.Discover(
+                _project,
+                ["common", "distinctive"]
+            );
+
+        var target =
+            Assert.Single(
+                candidates,
+                candidate =>
+                    candidate.Path ==
+                    "src/ZTarget.cs"
+            );
+
+        Assert.Contains(
+            "common",
+            target.ContentMatchedTerms,
+            StringComparer.OrdinalIgnoreCase
+        );
+
+        Assert.Contains(
+            "distinctive",
+            target.ContentMatchedTerms,
+            StringComparer.OrdinalIgnoreCase
         );
     }
 

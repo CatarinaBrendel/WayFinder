@@ -1,21 +1,23 @@
 using WayFinder.DevTools.Application.Projects;
 using WayFinder.DevTools.Application.Projects.Files;
-using WayFinder.DevTools.Application.Repositories.Searching;
+using WayFinder.DevTools.Infrastructure.Repositories.Searching;
 
 namespace WayFinder.DevTools.Infrastructure.Context;
 
 internal sealed class ContextCandidateDiscovery
 {
     private readonly IProjectFileSystem _fileSystem;
-    private readonly IRepositorySearcher _searcher;
+    private readonly RepositoryTextReader _textReader;
 
     public ContextCandidateDiscovery(
-        IProjectFileSystem fileSystem,
-        IRepositorySearcher searcher
+        IProjectFileSystem fileSystem
     )
     {
         _fileSystem = fileSystem;
-        _searcher = searcher;
+        _textReader =
+            new RepositoryTextReader(
+                fileSystem
+            );
     }
 
     public IReadOnlyCollection<ContextCandidate> Discover(
@@ -99,23 +101,42 @@ internal sealed class ContextCandidateDiscovery
         Dictionary<string, CandidateBuilder> candidates
     )
     {
-        foreach (var term in terms)
+        foreach (var file in _fileSystem.GetFiles(project))
         {
-            var result =
-                _searcher.Search(
+            if (!_textReader.TryRead(
                     project,
-                    term
-                );
-
-            foreach (var match in result.Matches)
+                    file.RelativePath,
+                    out var content))
             {
-                GetOrCreate(
-                    candidates,
-                    match.Path
-                ).AddContentMatch(
-                    term,
-                    match.LineNumber
-                );
+                continue;
+            }
+
+            using var reader =
+                new StringReader(content);
+
+            var lineNumber = 0;
+
+            while (reader.ReadLine() is { } line)
+            {
+                lineNumber++;
+
+                foreach (var term in terms)
+                {
+                    if (!line.Contains(
+                            term,
+                            StringComparison.OrdinalIgnoreCase))
+                    {
+                        continue;
+                    }
+
+                    GetOrCreate(
+                        candidates,
+                        file.RelativePath
+                    ).AddContentMatch(
+                        term,
+                        lineNumber
+                    );
+                }
             }
         }
     }

@@ -38,11 +38,6 @@ public sealed class ContextCompilerTests
         var fileSystem =
             new ProjectFileSystem();
 
-        var searcher =
-            new RepositorySearcher(
-                fileSystem
-            );
-
         var fileReader =
             new RepositoryFileReader(
                 fileSystem
@@ -54,7 +49,6 @@ public sealed class ContextCompilerTests
         _compiler =
             new ContextCompiler(
                 fileSystem,
-                searcher,
                 fileReader,
                 tokenEstimator
             );
