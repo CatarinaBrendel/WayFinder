@@ -10,6 +10,8 @@ public sealed class RepositoryFileReader(
 ) : IRepositoryFileReader
 {
     private const int MaximumBytes = 64 * 1024;
+    private const int RangeBufferBytes = 16 * 1024;
+    private const int MaximumRangeLines = 500;
 
     private static readonly UTF8Encoding StrictUtf8 =
         new(
@@ -58,6 +60,169 @@ public sealed class RepositoryFileReader(
             Content: content,
             TotalBytes: result.TotalBytes,
             Truncated: result.Truncated
+        );
+    }
+
+    public RepositoryFileRangeContent Read(
+        ProjectContext project,
+        string relativePath,
+        int startLine,
+        int lineCount
+    )
+    {
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(
+            startLine
+        );
+
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(
+            lineCount
+        );
+
+        if (lineCount > MaximumRangeLines)
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(lineCount),
+                lineCount,
+                $"Line count must not exceed {MaximumRangeLines}."
+            );
+        }
+
+        var decoder =
+            StrictUtf8.GetDecoder();
+
+        var content =
+            new StringBuilder();
+
+        var offset = 0L;
+        var currentLine = 1;
+        var returnedLines = 0;
+        long totalBytes = 0;
+
+        try
+        {
+            while (returnedLines < lineCount)
+            {
+                var result = fileSystem.Read(
+                    project,
+                    relativePath,
+                    offset,
+                    RangeBufferBytes
+                );
+
+                totalBytes =
+                    result.TotalBytes;
+
+                if (result.Content.Length == 0)
+                {
+                    break;
+                }
+
+                if (ContainsNullByte(result.Content))
+                {
+                    throw new BinaryFileNotSupportedException(
+                        relativePath
+                    );
+                }
+
+                var characters =
+                    new char[
+                        StrictUtf8.GetMaxCharCount(
+                            result.Content.Length
+                        )
+                    ];
+
+                decoder.Convert(
+                    result.Content,
+                    characters,
+                    flush: !result.Truncated,
+                    out var bytesUsed,
+                    out var charactersUsed,
+                    out _
+                );
+
+                if (bytesUsed != result.Content.Length)
+                {
+                    throw new InvalidDataException(
+                        "Could not process the complete repository read buffer."
+                    );
+                }
+
+                var chunk =
+                    new string(
+                        characters,
+                        0,
+                        charactersUsed
+                    );
+
+                if (offset == 0)
+                {
+                    chunk =
+                        RemoveUtf8Bom(chunk);
+                }
+
+                foreach (var character in chunk)
+                {
+                    if (currentLine >= startLine
+                        && returnedLines < lineCount)
+                    {
+                        content.Append(character);
+                    }
+
+                    if (character != '\n')
+                    {
+                        continue;
+                    }
+
+                    if (currentLine >= startLine)
+                    {
+                        returnedLines++;
+                    }
+
+                    currentLine++;
+
+                    if (returnedLines == lineCount)
+                    {
+                        break;
+                    }
+                }
+
+                offset +=
+                    result.Content.Length;
+
+                if (!result.Truncated)
+                {
+                    break;
+                }
+            }
+        }
+        catch (DecoderFallbackException)
+        {
+            throw new BinaryFileNotSupportedException(
+                relativePath
+            );
+        }
+
+        /*
+         * EOF can terminate the final line without a newline.
+         * If we collected content from that line, it still counts
+         * as a returned line.
+         */
+        if (returnedLines < lineCount
+            && currentLine >= startLine
+            && content.Length > 0
+            && content[^1] != '\n')
+        {
+            returnedLines++;
+        }
+
+        return new RepositoryFileRangeContent(
+            Path: relativePath,
+            Content: content.ToString(),
+            TotalBytes: totalBytes,
+            StartLine: startLine,
+            EndLine: returnedLines == 0
+                ? null
+                : startLine + returnedLines - 1
         );
     }
 

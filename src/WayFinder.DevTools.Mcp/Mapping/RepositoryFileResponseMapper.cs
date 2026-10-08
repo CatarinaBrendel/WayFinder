@@ -17,7 +17,29 @@ internal static class RepositoryFileResponseMapper
             Path: content.Path,
             Content: content.Content,
             TotalBytes: content.TotalBytes,
-            Truncated: content.Truncated
+            Mode: "file",
+            Truncated: content.Truncated,
+            StartLine: null,
+            EndLine: null
+        );
+    }
+
+    public static RepositoryFileResponse Map(
+        RepositoryFileRangeContent content
+    )
+    {
+        ArgumentNullException.ThrowIfNull(
+            content
+        );
+
+        return new RepositoryFileResponse(
+            Path: content.Path,
+            Content: content.Content,
+            TotalBytes: content.TotalBytes,
+            Mode: "range",
+            Truncated: null,
+            StartLine: content.StartLine,
+            EndLine: content.EndLine
         );
     }
 }

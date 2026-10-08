@@ -150,6 +150,256 @@ public sealed class RepositoryFileReaderTests : IDisposable
         );
     }
 
+    [Fact]
+    public void ReadRange_ReturnsRequestedLines()
+    {
+        File.WriteAllText(
+            Path.Combine(_root, "lines.txt"),
+            "one\ntwo\nthree\nfour\nfive",
+            new UTF8Encoding(false)
+        );
+
+        var result = _reader.Read(
+            _project,
+            "lines.txt",
+            startLine: 2,
+            lineCount: 2
+        );
+
+        Assert.Equal(
+            "two\nthree\n",
+            result.Content
+        );
+
+        Assert.Equal(2, result.StartLine);
+        Assert.Equal(3, result.EndLine);
+        Assert.Equal(23, result.TotalBytes);
+    }
+
+    [Fact]
+    public void ReadRange_ReturnsRemainingLinesAtEndOfFile()
+    {
+        File.WriteAllText(
+            Path.Combine(_root, "lines.txt"),
+            "one\ntwo\nthree",
+            new UTF8Encoding(false)
+        );
+
+        var result = _reader.Read(
+            _project,
+            "lines.txt",
+            startLine: 2,
+            lineCount: 10
+        );
+
+        Assert.Equal(
+            "two\nthree",
+            result.Content
+        );
+
+        Assert.Equal(2, result.StartLine);
+        Assert.Equal(3, result.EndLine);
+    }
+
+    [Fact]
+    public void ReadRange_BeyondEndOfFile_ReturnsEmptyContent()
+    {
+        File.WriteAllText(
+            Path.Combine(_root, "lines.txt"),
+            "one\ntwo\nthree",
+            new UTF8Encoding(false)
+        );
+
+        var result = _reader.Read(
+            _project,
+            "lines.txt",
+            startLine: 10,
+            lineCount: 2
+        );
+
+        Assert.Equal(
+            string.Empty,
+            result.Content
+        );
+
+        Assert.Equal(10, result.StartLine);
+        Assert.Null(result.EndLine);
+    }
+
+    [Fact]
+    public void ReadRange_IncludesEmptyLines()
+    {
+        File.WriteAllText(
+            Path.Combine(_root, "lines.txt"),
+            "one\n\ntwo\nthree",
+            new UTF8Encoding(false)
+        );
+
+        var result = _reader.Read(
+            _project,
+            "lines.txt",
+            startLine: 2,
+            lineCount: 2
+        );
+
+        Assert.Equal(
+            "\ntwo\n",
+            result.Content
+        );
+
+        Assert.Equal(2, result.StartLine);
+        Assert.Equal(3, result.EndLine);
+    }
+
+    [Fact]
+    public void ReadRange_PreservesCrLf()
+    {
+        File.WriteAllText(
+            Path.Combine(_root, "lines.txt"),
+            "one\r\ntwo\r\nthree\r\nfour",
+            new UTF8Encoding(false)
+        );
+
+        var result = _reader.Read(
+            _project,
+            "lines.txt",
+            startLine: 2,
+            lineCount: 2
+        );
+
+        Assert.Equal(
+            "two\r\nthree\r\n",
+            result.Content
+        );
+
+        Assert.Equal(2, result.StartLine);
+        Assert.Equal(3, result.EndLine);
+    }
+
+    [Fact]
+    public void ReadRange_FinalLineWithoutNewlineCountsAsLine()
+    {
+        File.WriteAllText(
+            Path.Combine(_root, "lines.txt"),
+            "one\ntwo\nthree",
+            new UTF8Encoding(false)
+        );
+
+        var result = _reader.Read(
+            _project,
+            "lines.txt",
+            startLine: 3,
+            lineCount: 1
+        );
+
+        Assert.Equal(
+            "three",
+            result.Content
+        );
+
+        Assert.Equal(3, result.EndLine);
+    }
+
+    [Fact]
+    public void ReadRange_RejectsZeroStartLine()
+    {
+        Assert.Throws<ArgumentOutOfRangeException>(
+            () => _reader.Read(
+                _project,
+                "anything.txt",
+                startLine: 0,
+                lineCount: 1
+            )
+        );
+    }
+
+    [Fact]
+    public void ReadRange_RejectsZeroLineCount()
+    {
+        Assert.Throws<ArgumentOutOfRangeException>(
+            () => _reader.Read(
+                _project,
+                "anything.txt",
+                startLine: 1,
+                lineCount: 0
+            )
+        );
+    }
+
+    [Fact]
+    public void ReadRange_Utf8CharacterAcrossBufferBoundary_IsPreserved()
+    {
+        const int bufferBytes = 16 * 1024;
+
+        var prefix = new string(
+            'a',
+            bufferBytes - 1
+        );
+
+        var content =
+            prefix + "€\nsecond";
+
+        File.WriteAllText(
+            Path.Combine(_root, "unicode.txt"),
+            content,
+            new UTF8Encoding(false)
+        );
+
+        var result = _reader.Read(
+            _project,
+            "unicode.txt",
+            startLine: 1,
+            lineCount: 1
+        );
+
+        Assert.Equal(
+            prefix + "€\n",
+            result.Content
+        );
+
+        Assert.Equal(1, result.EndLine);
+    }
+
+    [Fact]
+    public void ReadRange_NullByteInLaterBuffer_ThrowsBinaryFileNotSupportedException()
+    {
+        const int bufferBytes = 16 * 1024;
+
+        var content =
+            Enumerable
+                .Repeat((byte)'a', bufferBytes)
+                .Concat([(byte)0])
+                .Concat([(byte)'\n'])
+                .ToArray();
+
+        File.WriteAllBytes(
+            Path.Combine(_root, "binary.dat"),
+            content
+        );
+
+        Assert.Throws<BinaryFileNotSupportedException>(
+            () => _reader.Read(
+                _project,
+                "binary.dat",
+                startLine: 1,
+                lineCount: 2
+            )
+        );
+    }
+
+    [Fact]
+    public void ReadRange_RejectsLineCountAboveMaximum()
+    {
+        Assert.Throws<ArgumentOutOfRangeException>(
+            () => _reader.Read(
+                _project,
+                "anything.txt",
+                startLine: 1,
+                lineCount: 501
+            )
+        );
+    }
+
     public void Dispose()
     {
         if (Directory.Exists(_root))

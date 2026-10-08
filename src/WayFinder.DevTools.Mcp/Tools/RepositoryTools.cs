@@ -66,20 +66,33 @@ public sealed class RepositoryTools
 
     [McpServerTool(Name = "repo_read")]
     [Description(
-        "Reads a text file from a registered WayFinder project. "
-        + "The path must be repository-relative and the returned content is bounded."
-    )]
+    "Reads a text file from a registered WayFinder project. "
+    + "The path must be repository-relative. "
+    + "Optionally reads a bounded range of lines when both startLine and lineCount are provided."
+)]
     public RepositoryFileResponse Read(
-        [Description(
-            "The ID or exact name of a project registered for AI access in WayFinder."
-        )]
-        string project,
+    [Description(
+        "The ID or exact name of a project registered for AI access in WayFinder."
+    )]
+    string project,
 
-        [Description(
-            "Repository-relative path of the text file to read."
-        )]
-        string path
-    )
+    [Description(
+        "Repository-relative path of the text file to read."
+    )]
+    string path,
+
+    [Description(
+        "Optional 1-based line number at which to start a ranged read. "
+        + "Must be provided together with lineCount."
+    )]
+    int? startLine = null,
+
+    [Description(
+        "Optional number of lines to return, with a maximum of 500. "
+        + "Must be provided together with startLine."
+    )]
+    int? lineCount = null
+)
     {
         if (string.IsNullOrWhiteSpace(
                 path))
@@ -90,19 +103,42 @@ public sealed class RepositoryTools
             );
         }
 
+        if (startLine.HasValue
+            != lineCount.HasValue)
+        {
+            throw new ArgumentException(
+                "startLine and lineCount must either both be provided or both be omitted."
+            );
+        }
+
         var projectContext =
             _services.RegisteredProjectResolver.Resolve(
                 project
             );
 
-        var content =
+        if (startLine.HasValue)
+        {
+            var content =
+                _services.RepositoryFileReader.Read(
+                    projectContext,
+                    path,
+                    startLine.Value,
+                    lineCount!.Value
+                );
+
+            return RepositoryFileResponseMapper.Map(
+                content
+            );
+        }
+
+        var fileContent =
             _services.RepositoryFileReader.Read(
                 projectContext,
                 path
             );
 
         return RepositoryFileResponseMapper.Map(
-            content
+            fileContent
         );
     }
 }

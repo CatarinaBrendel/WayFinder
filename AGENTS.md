@@ -256,7 +256,9 @@ The current `repo_read` behavior is text-only and project-relative. The
 repository reader owns its read policy; adapters must not duplicate its
 limits.
 
-Current V1 behavior:
+Current V1 behavior supports two read modes.
+
+Whole-file reads:
 
 -   maximum returned source content is 64 KiB;
 -   total byte count and truncation state are reported;
@@ -265,6 +267,26 @@ Current V1 behavior:
 -   a UTF-8 BOM is accepted and removed;
 -   when truncation cuts through a UTF-8 sequence, the incomplete
     sequence is omitted safely.
+
+Targeted range reads:
+
+-   use 1-based `startLine` values consistent with `repo_search`;
+-   accept `startLine` and `lineCount` together;
+-   return at most 500 requested lines;
+-   return the requested start line and the actual final returned line;
+-   use a null end line when the requested range is beyond EOF;
+-   preserve original line endings;
+-   preserve UTF-8 characters that cross internal byte-buffer boundaries;
+-   apply the same strict UTF-8 and NUL/binary validation as whole-file reads.
+
+AI clients investigating a known code location should prefer:
+
+``` text
+repo_search
+→ targeted ranged repo_read
+```
+
+over reading an entire file.
 
 Large files must not be returned automatically. Do not expose an
 arbitrary filesystem read primitive to work around repository read
@@ -856,67 +878,49 @@ The remaining open context-policy question is whether the MCP adapter
 should use a smaller default context budget than the general Application
 default. This has not been decided.
 
-### Next Milestone: AI Project References
+### Completed Milestones: AI Project References and Repository Read Ranges
 
-The next implementation milestone is to improve AI-facing project
-addressing.
+AI project references are implemented and verified through a real MCP
+client. MCP tools that operate on a registered project accept either the
+authoritative GUID or the exact registered project name. Resolution is
+owned by `IRegisteredProjectResolver`. GUID-shaped input never falls back
+to name lookup, exact name matching is ordinal case-insensitive, and
+duplicate names are rejected as ambiguous.
 
-MCP tools that operate on a registered project should accept either:
+Repository read ranges are also implemented and verified. `repo_read`
+retains its existing bounded whole-file behavior and additionally accepts
+`startLine` plus `lineCount` for targeted line-oriented reads. Both range
+parameters must be supplied together. Repository policy enforces positive
+line values and a maximum `lineCount` of 500.
 
--   the registered project's authoritative GUID; or
--   its exact registered name.
+The MCP response uses one stable schema with an explicit mode:
 
-Resolution belongs in `IRegisteredProjectResolver`.
+``` text
+file   → Truncated is populated; StartLine and EndLine are null
+range  → Truncated is null; StartLine is populated; EndLine is the actual
+         final returned line or null for an empty range
+```
 
-Resolution rules:
+Real Copilot CLI dogfooding demonstrated the intended cross-project flow
+without first calling `projects`:
 
-1.  If the supplied value parses as a GUID, resolve it as a registered
-    project ID.
-2.  Otherwise, match it against registered project names.
-3.  Zero matches is a not-found error.
-4.  Exactly one match resolves the project.
-5.  Multiple matches are ambiguous and must fail with an error directing
-    the caller to use the project ID.
+``` text
+repo_search(project: "DeadRoute", query: "EditorPanel")
+→ targeted repo_read(project: "DeadRoute", ..., startLine: 1185, lineCount: 60)
+→ lines 1185–1244
+```
 
-Duplicate project names remain valid. Names are convenient references,
-not identities. WayFinder must never select an arbitrary project when a
-name is ambiguous.
+The session used 1.16 AIC according to Copilot CLI. Treat this as a
+dogfooding observation and an initial efficiency baseline, not as
+provider-neutral billing telemetry.
 
-Do not add fuzzy matching, partial matching, aliases, path-based
-resolution, or filesystem discovery as part of this milestone.
+Do not add a separate byte/character ceiling to ranged reads solely for
+the theoretical case of extremely long individual lines. Revisit that
+policy if dogfooding demonstrates a real output-size problem.
 
-Keep the strongly typed `Resolve(Guid)` operation and add
-string-reference resolution to `IRegisteredProjectResolver`. Do not add
-name lookup to `IProjectRegistry` unless a demonstrated need appears. Do
-not introduce a new project-reference abstraction solely for this
-milestone.
-
-Apply the resulting `project` parameter consistently to:
-
--   `context`
--   `repo_search`
--   `repo_read`
-
-Add resolver regression tests covering:
-
--   resolution by `Guid`;
--   resolution by GUID string;
--   resolution by unique exact registered name;
--   unknown names;
--   empty references;
--   partial-name mismatches;
--   duplicate-name ambiguity.
-
-Name matching should remain exact. Case-sensitivity is the one remaining
-low-level semantic detail to confirm before implementation; do not
-silently choose a different matching policy.
-
-After implementation, verify the behavior through a real MCP client by
-calling a repository tool directly with a unique registered project
-name, for example `repo_search("DeadRoute", "stale")`, without first
-resolving the project through `projects`.
-
-The sequence may change after discussion.
+The next milestone should be selected from evidence gathered through
+further dogfooding and discussion. Do not silently advance to controlled
+execution or project-specific intelligence.
 
 ------------------------------------------------------------------------
 

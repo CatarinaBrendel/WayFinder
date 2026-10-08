@@ -26,6 +26,13 @@ public interface IProjectFileSystem
         int maxBytes
     );
 
+    ProjectFileRead Read(
+        ProjectContext project,
+        string relativePath,
+        long offset,
+        int maxBytes
+    );
+
     IReadOnlyCollection<ProjectFile> GetFiles(
         ProjectContext project
     );

@@ -490,6 +490,197 @@ public sealed class ProjectFileSystemTests : IDisposable
         }
     }
 
+    [Fact]
+    public void Read_WithOffset_ReturnsBytesFromOffset()
+    {
+        File.WriteAllText(
+            Path.Combine(
+                _project.RootPath,
+                "offset.txt"
+            ),
+            "abcdefghij"
+        );
+
+        var result = _fileSystem.Read(
+            _project,
+            "offset.txt",
+            offset: 3,
+            maxBytes: 4
+        );
+
+        Assert.Equal(
+            "defg"u8.ToArray(),
+            result.Content
+        );
+
+        Assert.Equal(
+            10,
+            result.TotalBytes
+        );
+
+        Assert.Equal(
+            3,
+            result.Offset
+        );
+
+        Assert.True(
+            result.Truncated
+        );
+    }
+
+    [Fact]
+    public void Read_WithOffset_ReturnsFinalChunkWithoutTruncation()
+    {
+        File.WriteAllText(
+            Path.Combine(
+                _project.RootPath,
+                "offset.txt"
+            ),
+            "abcdefghij"
+        );
+
+        var result = _fileSystem.Read(
+            _project,
+            "offset.txt",
+            offset: 7,
+            maxBytes: 4
+        );
+
+        Assert.Equal(
+            "hij"u8.ToArray(),
+            result.Content
+        );
+
+        Assert.Equal(
+            10,
+            result.TotalBytes
+        );
+
+        Assert.Equal(
+            7,
+            result.Offset
+        );
+
+        Assert.False(
+            result.Truncated
+        );
+    }
+
+    [Fact]
+    public void Read_WithOffsetAtEndOfFile_ReturnsEmptyContent()
+    {
+        File.WriteAllText(
+            Path.Combine(
+                _project.RootPath,
+                "offset.txt"
+            ),
+            "hello"
+        );
+
+        var result = _fileSystem.Read(
+            _project,
+            "offset.txt",
+            offset: 5,
+            maxBytes: 4
+        );
+
+        Assert.Empty(
+            result.Content
+        );
+
+        Assert.Equal(
+            5,
+            result.TotalBytes
+        );
+
+        Assert.Equal(
+            5,
+            result.Offset
+        );
+
+        Assert.False(
+            result.Truncated
+        );
+    }
+
+    [Fact]
+    public void Read_WithOffsetBeyondEndOfFile_ReturnsEmptyContent()
+    {
+        File.WriteAllText(
+            Path.Combine(
+                _project.RootPath,
+                "offset.txt"
+            ),
+            "hello"
+        );
+
+        var result = _fileSystem.Read(
+            _project,
+            "offset.txt",
+            offset: 10,
+            maxBytes: 4
+        );
+
+        Assert.Empty(
+            result.Content
+        );
+
+        Assert.Equal(
+            5,
+            result.TotalBytes
+        );
+
+        Assert.Equal(
+            10,
+            result.Offset
+        );
+
+        Assert.False(
+            result.Truncated
+        );
+    }
+
+    [Fact]
+    public void Read_RejectsNegativeOffset()
+    {
+        Assert.Throws<ArgumentOutOfRangeException>(
+            () => _fileSystem.Read(
+                _project,
+                "anything.txt",
+                offset: -1,
+                maxBytes: 64
+            )
+        );
+    }
+
+    [Fact]
+    public void Read_WithoutOffset_UsesZeroOffset()
+    {
+        File.WriteAllText(
+            Path.Combine(
+                _project.RootPath,
+                "hello.txt"
+            ),
+            "hello"
+        );
+
+        var result = _fileSystem.Read(
+            _project,
+            "hello.txt",
+            maxBytes: 64
+        );
+
+        Assert.Equal(
+            0,
+            result.Offset
+        );
+
+        Assert.Equal(
+            "hello"u8.ToArray(),
+            result.Content
+        );
+    }
+
     public void Dispose()
     {
         if (Directory.Exists(_root))

@@ -4,5 +4,8 @@ public sealed record RepositoryFileResponse(
     string Path,
     string Content,
     long TotalBytes,
-    bool Truncated
+    string Mode,
+    bool? Truncated,
+    int? StartLine,
+    int? EndLine
 );

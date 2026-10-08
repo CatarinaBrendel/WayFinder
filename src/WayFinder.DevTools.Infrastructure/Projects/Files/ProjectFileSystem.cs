@@ -226,13 +226,32 @@ public sealed class ProjectFileSystem : IProjectFileSystem
     }
 
     public ProjectFileRead Read(
+    ProjectContext project,
+    string relativePath,
+    int maxBytes
+)
+    {
+        return Read(
+            project,
+            relativePath,
+            offset: 0,
+            maxBytes
+        );
+    }
+
+    public ProjectFileRead Read(
         ProjectContext project,
         string relativePath,
+        long offset,
         int maxBytes
     )
     {
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(
             maxBytes
+        );
+
+        ArgumentOutOfRangeException.ThrowIfNegative(
+            offset
         );
 
         var path = ResolvePath(
@@ -262,9 +281,23 @@ public sealed class ProjectFileSystem : IProjectFileSystem
 
         var totalBytes = stream.Length;
 
+        if (offset >= totalBytes)
+        {
+            return new ProjectFileRead(
+                Content: [],
+                TotalBytes: totalBytes,
+                Offset: offset,
+                Truncated: false
+            );
+        }
+
+        stream.Seek(offset, SeekOrigin.Begin);
+
+        var remainingBytes = totalBytes - offset;
+
         var bytesToRead =
             (int)Math.Min(
-                totalBytes,
+                remainingBytes,
                 maxBytes
             );
 
@@ -276,7 +309,8 @@ public sealed class ProjectFileSystem : IProjectFileSystem
         return new ProjectFileRead(
             Content: content,
             TotalBytes: totalBytes,
-            Truncated: totalBytes > maxBytes
+            Offset: offset,
+            Truncated: remainingBytes > maxBytes
         );
     }
 
