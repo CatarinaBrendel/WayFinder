@@ -93,7 +93,8 @@ public sealed class ContextCompiler
 
         var terms =
             _termExtractor.Extract(
-                request.Task
+                request.Task,
+                project.Name
             );
 
         var candidates =

@@ -13,7 +13,8 @@ public class TaskTermExtractorTests
 
         var result =
             extractor.Extract(
-                "Fix stale project handling in doctor"
+                "Fix stale project handling in doctor",
+                "WayFinder"
             );
 
         Assert.Equal(
@@ -30,7 +31,8 @@ public class TaskTermExtractorTests
 
         var result =
             extractor.Extract(
-                "Fix ProjectRegistry.Add when wayfinder.json already exists"
+                "Fix ProjectRegistry.Add when wayfinder.json already exists",
+                "WayFinder"
             );
 
         Assert.Equal(
@@ -52,7 +54,8 @@ public class TaskTermExtractorTests
 
         var result =
             extractor.Extract(
-                "Doctor doctor DOCTOR registry"
+                "Doctor doctor DOCTOR registry",
+                "WayFinder"
             );
 
         Assert.Equal(
@@ -68,7 +71,61 @@ public class TaskTermExtractorTests
             new TaskTermExtractor();
 
         Assert.Throws<ArgumentException>(
-            () => extractor.Extract(" ")
+            () => extractor.Extract(" ", "WayFinder")
+        );
+    }
+
+    [Fact]
+    public void Extract_RemovesLowInformationTaskLanguage()
+    {
+        var extractor =
+            new TaskTermExtractor();
+
+        var result =
+            extractor.Extract(
+                "Investigate how the noise system works",
+                "DeadRoute"
+            );
+
+        Assert.Equal(
+            ["noise", "system"],
+            result
+        );
+    }
+
+    [Fact]
+    public void Extract_RemovesCurrentProjectName()
+    {
+        var extractor =
+            new TaskTermExtractor();
+
+        var result =
+            extractor.Extract(
+                "Investigate how DeadRoute's noise system works",
+                "DeadRoute"
+            );
+
+        Assert.Equal(
+            ["noise", "system"],
+            result
+        );
+    }
+
+    [Fact]
+    public void Extract_RemovesCurrentProjectNameIgnoringCase()
+    {
+        var extractor =
+            new TaskTermExtractor();
+
+        var result =
+            extractor.Extract(
+                "Investigate deadroute noise",
+                "DeadRoute"
+            );
+
+        Assert.Equal(
+            ["noise"],
+            result
         );
     }
 }

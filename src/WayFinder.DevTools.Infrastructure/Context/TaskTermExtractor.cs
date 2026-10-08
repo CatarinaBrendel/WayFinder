@@ -38,10 +38,17 @@ internal sealed class TaskTermExtractor
             "implement",
             "improve",
             "update",
+
+            // Low-information task language
+            "how",
+            "investigate",
+            "work",
+            "works",
         };
 
     public IReadOnlyCollection<string> Extract(
-        string task
+        string task,
+        string projectName
     )
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(
@@ -50,6 +57,13 @@ internal sealed class TaskTermExtractor
 
         return Tokenize(task)
             .Where(IsUseful)
+            .Where(
+                term => !string.Equals(
+                    term,
+                    projectName,
+                    StringComparison.OrdinalIgnoreCase
+                )
+            )
             .Distinct(
                 StringComparer.OrdinalIgnoreCase
             )
