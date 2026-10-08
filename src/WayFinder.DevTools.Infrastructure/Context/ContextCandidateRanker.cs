@@ -3,7 +3,7 @@ namespace WayFinder.DevTools.Infrastructure.Context;
 internal sealed class ContextCandidateRanker
 {
     private const int PathMatchScore = 50;
-    private const int TermMatchScore = 20;
+    private const int MatchedTermScore = 20;
     private const int MinimumScore = 40;
 
     public IReadOnlyCollection<RankedContextCandidate> Rank(
@@ -104,9 +104,17 @@ internal sealed class ContextCandidateRanker
         ContextCandidate candidate
     )
     {
+        var matchedTerms =
+            candidate.PathMatchedTerms
+                .Union(
+                    candidate.ContentMatchedTerms,
+                    StringComparer.OrdinalIgnoreCase
+                )
+                .Count();
+
         var score =
-            candidate.ContentMatchedTerms.Count
-            * TermMatchScore;
+            matchedTerms
+            * MatchedTermScore;
 
         if (candidate.PathMatchedTerms.Any())
         {

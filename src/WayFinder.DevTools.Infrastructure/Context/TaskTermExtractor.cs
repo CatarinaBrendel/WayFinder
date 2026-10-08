@@ -40,8 +40,12 @@ internal sealed class TaskTermExtractor
             "update",
 
             // Low-information task language
+            "explain",
+            "find",
             "how",
             "investigate",
+            "over",
+            "where",
             "work",
             "works",
         };

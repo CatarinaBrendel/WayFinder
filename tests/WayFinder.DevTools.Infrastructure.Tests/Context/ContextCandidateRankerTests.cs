@@ -286,6 +286,64 @@ public sealed class ContextCandidateRankerTests
         );
     }
 
+    [Fact]
+    public void Rank_PrefersBroaderTaskTermCoverage()
+    {
+        var narrow =
+            Candidate(
+                "src/HardwareResourceState.cs",
+                pathTerms: ["state"],
+                contentTerms: ["state"]
+            );
+
+        var broad =
+            Candidate(
+                "tests/TimedFileTransferOperationTests.cs",
+                pathTerms: ["file"],
+                contentTerms: ["transfers"]
+            );
+
+        var fileAnchor =
+            Candidate(
+                "src/HostFileDefinition.cs",
+                pathTerms: ["file"],
+                contentTerms: ["file"]
+            );
+
+        var result =
+            _ranker.Rank(
+                [
+                    narrow,
+                broad,
+                fileAnchor,
+                ]
+            )
+            .ToArray();
+
+        Assert.Equal(
+            "tests/TimedFileTransferOperationTests.cs",
+            result[0].Candidate.Path
+        );
+
+        Assert.Equal(
+            90,
+            result[0].Score
+        );
+
+        var narrowResult =
+            Assert.Single(
+                result,
+                candidate =>
+                        candidate.Candidate.Path
+                        == "src/HardwareResourceState.cs"
+            );
+
+        Assert.Equal(
+            70,
+            narrowResult.Score
+        );
+    }
+
     private static ContextCandidate Candidate(
         string path,
         IReadOnlyCollection<string> pathTerms,
