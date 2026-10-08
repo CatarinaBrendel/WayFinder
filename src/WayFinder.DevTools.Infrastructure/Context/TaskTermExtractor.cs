@@ -60,6 +60,7 @@ internal sealed class TaskTermExtractor
         );
 
         return Tokenize(task)
+            .Select(Normalize)
             .Where(IsUseful)
             .Where(
                 term => !string.Equals(
@@ -136,6 +137,47 @@ internal sealed class TaskTermExtractor
 
         return !StopWords.Contains(
             term
+        );
+    }
+
+    private static string Normalize(
+        string term
+    )
+    {
+        if (term.Length < 3)
+        {
+            return term;
+        }
+
+        var normalized =
+            new char[term.Length];
+
+        var length = 0;
+
+        for (var index = 0;
+             index < term.Length;
+             index++)
+        {
+            var character =
+                term[index];
+
+            if (character is '-' or '_'
+                && index > 0
+                && index + 1 < term.Length
+                && char.IsLetter(term[index - 1])
+                && char.IsDigit(term[index + 1]))
+            {
+                continue;
+            }
+
+            normalized[length++] =
+                character;
+        }
+
+        return new string(
+            normalized,
+            0,
+            length
         );
     }
 }

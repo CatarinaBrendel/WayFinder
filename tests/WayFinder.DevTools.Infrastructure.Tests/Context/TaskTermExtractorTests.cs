@@ -128,4 +128,58 @@ public class TaskTermExtractorTests
             result
         );
     }
+
+    [Fact]
+    public void Extract_NormalizesSeparatorBetweenLetterAndDigit()
+    {
+        var extractor =
+            new TaskTermExtractor();
+
+        var terms =
+            extractor.Extract(
+                "Explain malformed UTF-8",
+                "TestProject"
+            );
+
+        Assert.Equal(
+            ["malformed", "UTF8"],
+            terms
+        );
+    }
+
+    [Fact]
+    public void Extract_DoesNotRemoveSeparatorBetweenWords()
+    {
+        var extractor =
+            new TaskTermExtractor();
+
+        var terms =
+            extractor.Extract(
+                "Investigate file-system behavior",
+                "TestProject"
+            );
+
+        Assert.Contains(
+            "file-system",
+            terms
+        );
+    }
+
+    [Fact]
+    public void Extract_DeduplicatesNormalizedTerms()
+    {
+        var extractor =
+            new TaskTermExtractor();
+
+        var terms =
+            extractor.Extract(
+                "UTF-8 UTF8",
+                "TestProject"
+            );
+
+        Assert.Equal(
+            ["UTF8"],
+            terms
+        );
+    }
 }
