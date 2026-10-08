@@ -22,8 +22,11 @@ public sealed class RepositoryTools
 
     [McpServerTool(Name = "repo_search")]
     [Description(
-        "Searches text files in a registered WayFinder project for a string. "
-        + "Returns bounded repository-relative matches with line numbers."
+        "Performs a targeted follow-up search in a registered WayFinder project. "
+        + "Searches text files for one literal string and returns bounded "
+        + "repository-relative matches with line numbers. "
+        + "For broad investigation of a development task, prefer context first. "
+        + "Use separate repo_search calls for different search terms."
     )]
     public RepositorySearchResponse Search(
         [Description(
@@ -66,10 +69,11 @@ public sealed class RepositoryTools
 
     [McpServerTool(Name = "repo_read")]
     [Description(
-    "Reads a text file from a registered WayFinder project. "
-    + "The path must be repository-relative. "
-    + "Optionally reads a bounded range of lines when both startLine and lineCount are provided."
-)]
+        "Reads source text from a registered WayFinder project for targeted inspection. "
+        + "The path must be repository-relative. "
+        + "When only part of a file is needed, prefer a bounded line range using "
+        + "startLine and lineCount instead of reading the whole file."
+    )]
     public RepositoryFileResponse Read(
     [Description(
         "The ID or exact name of a project registered for AI access in WayFinder."

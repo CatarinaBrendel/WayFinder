@@ -19,7 +19,9 @@ public sealed class ProjectTools
 
     [McpServerTool]
     [Description(
-        "Lists projects that are registered for AI access in WayFinder."
+        "Lists projects registered for AI access in WayFinder. "
+        + "Use this to discover or confirm the exact registered project name or ID when needed. "
+        + "If an exact registered name or ID is already known, other WayFinder tools can use it directly."
     )]
     public object[] Projects()
     {

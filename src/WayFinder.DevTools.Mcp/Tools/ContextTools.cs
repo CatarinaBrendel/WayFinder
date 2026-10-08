@@ -11,7 +11,7 @@ namespace WayFinder.DevTools.Mcp.Tools;
 public sealed class ContextTools
 {
     private const int DefaultTokenBudget =
-        8_000;
+        4_000;
 
     private readonly WayFinderServices _services;
 
@@ -25,7 +25,10 @@ public sealed class ContextTools
 
     [McpServerTool]
     [Description(
-        "Builds a bounded, relevant repository context package for a development task."
+        "Preferred starting point for investigating or working on a development task. " +
+        "Builds a bounded, relevant repository context package. " +
+        "Use repo_search and repo_read afterward for targeted follow-up when more detail is needed. " +
+        "The project may be specified by exact registered name or ID; calling projects first is not required."
     )]
     public ContextResponse Context(
         [Description(
