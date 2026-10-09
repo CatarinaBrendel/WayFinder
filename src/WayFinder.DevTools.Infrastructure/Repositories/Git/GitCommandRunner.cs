@@ -413,6 +413,13 @@ internal sealed class GitCommandRunner
             StandardErrorEncoding = Encoding.UTF8
         };
 
+        // Disable repository-configured filesystem monitors.
+        //
+        // Git configuration is resolved in precedence order, so this
+        // command-line setting overrides repository and global configuration.
+        startInfo.ArgumentList.Add("-c");
+        startInfo.ArgumentList.Add("core.fsmonitor=false");
+
         foreach (var argument in arguments)
         {
             startInfo.ArgumentList.Add(argument);

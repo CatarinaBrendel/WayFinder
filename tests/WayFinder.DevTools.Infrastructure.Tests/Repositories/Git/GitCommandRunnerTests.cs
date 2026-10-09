@@ -531,6 +531,131 @@ public sealed class GitCommandRunnerTests : IDisposable
         Assert.Equal("main", branch);
     }
 
+    [Fact]
+    public void GetStatus_DoesNotExecuteRepositoryConfiguredFsMonitor()
+    {
+        var markerPath = Path.Combine(_root, "fsmonitor-executed.txt");
+
+        // Prepare the repository before enabling the filesystem monitor.
+        File.WriteAllText(
+            Path.Combine(_root, "tracked.txt"),
+            "initial content"
+        );
+
+        Git("add", "tracked.txt");
+
+        // Configure a filesystem monitor that creates a marker when executed.
+        Git(
+            "config",
+            "core.fsmonitor",
+            $"sh -c 'touch \"{markerPath}\"'"
+        );
+
+        // Ensure the marker does not exist before WayFinder executes Git.
+        Assert.False(File.Exists(markerPath));
+
+        _runner.GetStatus(_root);
+
+        // WayFinder must not execute repository-configured programs.
+        Assert.False(
+            File.Exists(markerPath),
+            "Git executed the repository-configured filesystem monitor."
+        );
+    }
+
+    [Fact]
+    public void GetDiff_DoesNotExecuteRepositoryConfiguredExternalDiff()
+    {
+        var markerPath = Path.Combine(_root, "external-diff-executed.txt");
+
+        // Prepare a committed file.
+        File.WriteAllText(
+            Path.Combine(_root, "tracked.txt"),
+            "original content\n"
+        );
+
+        Git("add", "tracked.txt");
+        Git("commit", "-q", "-m", "Initial commit");
+
+        // Modify the tracked file so Git has a diff to generate.
+        File.WriteAllText(
+            Path.Combine(_root, "tracked.txt"),
+            "modified content\n"
+        );
+
+        // Configure an external diff command that creates a marker.
+        Git(
+            "config",
+            "diff.external",
+            $"sh -c 'touch \"{markerPath}\"'"
+        );
+
+        Assert.False(File.Exists(markerPath));
+
+        // Execute WayFinder's diff operation.
+        _runner.GetDiff(
+            repositoryPath: _root,
+            staged: false,
+            statOnly: false,
+            path: null,
+            maxOutputBytes: 65_536
+        );
+
+        // External diff programs must never execute.
+        Assert.False(
+            File.Exists(markerPath),
+            "Git executed the repository-configured external diff."
+        );
+    }
+
+    [Fact]
+    public void GetDiff_DoesNotExecuteRepositoryConfiguredTextConv()
+    {
+        var markerPath = Path.Combine(_root, "textconv-executed.txt");
+
+        // Associate .txt files with a custom diff driver.
+        File.WriteAllText(
+            Path.Combine(_root, ".gitattributes"),
+            "*.txt diff=custom"
+        );
+
+        File.WriteAllText(
+            Path.Combine(_root, "tracked.txt"),
+            "original content\n"
+        );
+
+        Git("add", ".gitattributes", "tracked.txt");
+        Git("commit", "-q", "-m", "Initial commit");
+
+        // Modify the tracked file to produce a diff.
+        File.WriteAllText(
+            Path.Combine(_root, "tracked.txt"),
+            "modified content\n"
+        );
+
+        // Configure a text-conversion command that creates a marker.
+        Git(
+            "config",
+            "diff.custom.textconv",
+            $"sh -c 'touch \"{markerPath}\"'"
+        );
+
+        Assert.False(File.Exists(markerPath));
+
+        _runner.GetDiff(
+            repositoryPath: _root,
+            staged: false,
+            statOnly: false,
+            path: null,
+            maxOutputBytes: 65_536
+        );
+
+        Assert.False(
+            File.Exists(markerPath),
+            "Git executed the repository-configured text-conversion driver."
+        );
+    }
+
     private void Git(params string[] arguments)
     {
         var startInfo = new ProcessStartInfo

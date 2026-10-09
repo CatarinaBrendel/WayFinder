@@ -8,9 +8,9 @@ in C#/.NET.
 Its purpose is to provide safe, efficient, structured access to software
 projects for:
 
--   Human developers through the `wayfinder` CLI.
--   AI clients such as ChatGPT and Claude through an MCP server.
--   Future project-specific developer tooling.
+- Human developers through the `wayfinder` CLI.
+- AI clients such as ChatGPT and Claude through an MCP server.
+- Future project-specific developer tooling.
 
 The CLI and MCP server are adapters over shared application services.
 Business logic must not be duplicated between them.
@@ -18,7 +18,7 @@ Business logic must not be duplicated between them.
 WayFinder should remain provider-neutral. Core functionality must not
 depend on a specific AI provider.
 
-------------------------------------------------------------------------
+---
 
 ## Development Environment
 
@@ -27,11 +27,11 @@ unless a feature explicitly requires otherwise.
 
 Current baseline:
 
--   .NET 10
--   C#
--   macOS on Apple Silicon
--   VS Code
--   xUnit
+- .NET 10
+- C#
+- macOS on Apple Silicon
+- VS Code
+- xUnit
 
 Avoid Windows-specific APIs, filesystem assumptions, path separators,
 environment variables, or shell behavior unless isolated behind an
@@ -40,13 +40,13 @@ explicit platform abstraction.
 Use `Path`, `DirectoryInfo`, and other cross-platform .NET APIs instead
 of manually constructing filesystem paths.
 
-------------------------------------------------------------------------
+---
 
 ## Architecture
 
 The solution is divided into these primary projects:
 
-``` text
+```text
 WayFinder.DevTools.Application
 WayFinder.DevTools.Infrastructure
 WayFinder.DevTools.Cli
@@ -60,7 +60,7 @@ Dependencies should flow toward the application layer.
 
 Conceptually:
 
-``` text
+```text
 CLI ─────────┐
              ▼
         Application
@@ -77,14 +77,14 @@ Defines WayFinder capabilities and application-level abstractions.
 
 Examples:
 
--   project context
--   project inspection
--   project detectors
--   project filesystem contracts
--   project registry and registered-project resolution contracts
--   repository search contracts
--   bounded repository source retrieval contracts
--   deterministic context compilation contracts
+- project context
+- project inspection
+- project detectors
+- project filesystem contracts
+- project registry and registered-project resolution contracts
+- repository search contracts
+- bounded repository source retrieval contracts
+- deterministic context compilation contracts
 
 Application code should not depend directly on operating-system
 filesystem or process APIs when an abstraction is appropriate.
@@ -95,12 +95,12 @@ Implements interaction with the host environment.
 
 Examples:
 
--   filesystem access
--   Git
--   dotnet CLI
--   process execution
--   project discovery
--   project artifact detection
+- filesystem access
+- Git
+- dotnet CLI
+- process execution
+- project discovery
+- project artifact detection
 
 Infrastructure must enforce security boundaries required by the
 Application contracts.
@@ -111,10 +111,10 @@ The CLI is a human-facing adapter.
 
 It should contain:
 
--   command definitions
--   argument parsing
--   human-readable presentation
--   composition/wiring
+- command definitions
+- argument parsing
+- human-readable presentation
+- composition/wiring
 
 It should contain as little business logic as possible.
 
@@ -125,7 +125,7 @@ Infrastructure services used by the CLI.
 
 The current read-only MCP tool surface is:
 
-``` text
+```text
 projects
 context
 repo_search
@@ -140,7 +140,7 @@ belong in shared Application or Infrastructure services.
 The MCP server uses stdio transport. Treat the streams as a protocol
 boundary:
 
-``` text
+```text
 stdin   MCP protocol input
 stdout  MCP protocol output
 stderr  diagnostics and logging
@@ -148,7 +148,7 @@ stderr  diagnostics and logging
 
 Never write human-readable diagnostics to stdout from the MCP process.
 
-------------------------------------------------------------------------
+---
 
 ## Project Access Security
 
@@ -159,14 +159,14 @@ explicitly made available to WayFinder.
 
 The project filesystem boundary is represented by:
 
-``` text
+```text
 IProjectFileSystem
 ```
 
 AI-facing project functionality must not bypass this abstraction with
 direct calls to:
 
-``` text
+```text
 File
 Directory
 FileInfo
@@ -186,7 +186,7 @@ Do not expose arbitrary absolute filesystem paths to AI-facing APIs.
 
 Reject attempts to escape a project through:
 
-``` text
+```text
 ../
 absolute paths
 filesystem links resolving outside the project
@@ -201,7 +201,7 @@ implementation.
 Default to denying additional filesystem capability unless there is a
 demonstrated need for it.
 
-------------------------------------------------------------------------
+---
 
 ## Project Registry Security
 
@@ -214,7 +214,7 @@ working directory.
 
 This allows commands such as:
 
-``` text
+```text
 wayfinder project info
 ```
 
@@ -234,7 +234,46 @@ automatically imply unrestricted write access.
 WayFinder's own internal configuration storage is separate from the
 project filesystem exposed to AI clients.
 
-------------------------------------------------------------------------
+---
+
+### Git Repository Trust and Execution Security
+
+WayFinder operates exclusively on repositories explicitly registered
+and trusted by the user.
+
+Security requirements:
+
+- MCP clients and AI agents must not access unregistered repositories.
+- Git operations exposed through MCP must remain read-only.
+- Git commands must use structured process arguments without shell execution.
+- Git-specific environment variables (`GIT_*`) must not be inherited.
+- Repository-configured filesystem monitors must be disabled.
+- External diff programs and text-conversion drivers must be disabled
+  for Git diff operations.
+- Git subprocesses must enforce execution timeouts and output limits.
+
+#### Trusted Repository Configuration
+
+Git may execute repository-configured content filters during certain
+operations, including `git status`.
+
+This behavior is accepted for explicitly registered, trusted repositories
+to preserve compatibility with legitimate Git workflows.
+
+Consequently:
+
+- Repository registration establishes a trust boundary.
+- Users must register only repositories whose configuration and contents
+  they trust.
+- Read-only Git commands do not guarantee that Git executes no external
+  programs.
+- AI agents must not be allowed to modify repository configuration or
+  execute arbitrary Git commands through WayFinder.
+
+WayFinder's Git integration provides controlled read-only access,
+not a complete operating-system sandbox.
+
+---
 
 ## Filesystem Access
 
@@ -242,7 +281,7 @@ Avoid creating a generic filesystem service exposed to AI clients.
 
 Do not expose operations equivalent to:
 
-``` text
+```text
 read arbitrary file
 write arbitrary file
 delete arbitrary file
@@ -260,28 +299,28 @@ Current V1 behavior supports two read modes.
 
 Whole-file reads:
 
--   maximum returned source content is 64 KiB;
--   total byte count and truncation state are reported;
--   NUL-containing files are treated as unsupported binary content;
--   malformed UTF-8 is rejected;
--   a UTF-8 BOM is accepted and removed;
--   when truncation cuts through a UTF-8 sequence, the incomplete
-    sequence is omitted safely.
+- maximum returned source content is 64 KiB;
+- total byte count and truncation state are reported;
+- NUL-containing files are treated as unsupported binary content;
+- malformed UTF-8 is rejected;
+- a UTF-8 BOM is accepted and removed;
+- when truncation cuts through a UTF-8 sequence, the incomplete
+  sequence is omitted safely.
 
 Targeted range reads:
 
--   use 1-based `startLine` values consistent with `repo_search`;
--   accept `startLine` and `lineCount` together;
--   return at most 500 requested lines;
--   return the requested start line and the actual final returned line;
--   use a null end line when the requested range is beyond EOF;
--   preserve original line endings;
--   preserve UTF-8 characters that cross internal byte-buffer boundaries;
--   apply the same strict UTF-8 and NUL/binary validation as whole-file reads.
+- use 1-based `startLine` values consistent with `repo_search`;
+- accept `startLine` and `lineCount` together;
+- return at most 500 requested lines;
+- return the requested start line and the actual final returned line;
+- use a null end line when the requested range is beyond EOF;
+- preserve original line endings;
+- preserve UTF-8 characters that cross internal byte-buffer boundaries;
+- apply the same strict UTF-8 and NUL/binary validation as whole-file reads.
 
 AI clients investigating a known code location should prefer:
 
-``` text
+```text
 repo_search
 → targeted ranged repo_read
 ```
@@ -292,19 +331,19 @@ Large files must not be returned automatically. Do not expose an
 arbitrary filesystem read primitive to work around repository read
 limits.
 
-------------------------------------------------------------------------
+---
 
 ## Shell and Process Execution
 
 Do not expose a generic MCP tool equivalent to:
 
-``` text
+```text
 shell(command)
 ```
 
 or:
 
-``` text
+```text
 execute(command)
 ```
 
@@ -312,7 +351,7 @@ Instead expose constrained operations with explicit semantics.
 
 Examples:
 
-``` text
+```text
 git_status
 git_diff
 dotnet_build
@@ -323,15 +362,15 @@ repo_read
 
 Each operation should define:
 
--   allowed inputs
--   execution scope
--   timeout
--   output limits
--   structured result format
+- allowed inputs
+- execution scope
+- timeout
+- output limits
+- structured result format
 
 Prefer deterministic operations over arbitrary command execution.
 
-------------------------------------------------------------------------
+---
 
 ## Project Inspection
 
@@ -339,7 +378,7 @@ Project inspection is detector-based.
 
 Each detector implements:
 
-``` text
+```text
 IProjectDetector
 ```
 
@@ -348,7 +387,7 @@ unnecessary assumptions.
 
 Examples:
 
-``` text
+```text
 dotnet
   solution
   project
@@ -365,7 +404,7 @@ Do not model a repository as belonging to exactly one technology.
 
 A repository may simultaneously contain:
 
-``` text
+```text
 .NET
 Node
 Tauri
@@ -379,13 +418,13 @@ rendering logic.
 
 Detectors accessing project contents must use `IProjectFileSystem`.
 
-------------------------------------------------------------------------
+---
 
 ## Detection vs Interpretation
 
 Keep these concepts separate:
 
-``` text
+```text
 Detection
     What exists?
 
@@ -401,7 +440,7 @@ Prefer factual detection first.
 Do not introduce large central technology enums or models that require
 WayFinder to know every possible ecosystem in advance.
 
-------------------------------------------------------------------------
+---
 
 ## Technology Model
 
@@ -430,14 +469,14 @@ must not be rejected.
 
 Keep these concepts separate:
 
--   `technologies.json` describes technologies WayFinder knows how to
-    recognize.
--   `wayfinder.json` describes technologies a particular project
-    declares that it uses.
--   Detection represents repository evidence.
--   Declaration represents developer-provided project knowledge.
--   AI consumers may understand technologies that WayFinder itself does
-    not recognize.
+- `technologies.json` describes technologies WayFinder knows how to
+  recognize.
+- `wayfinder.json` describes technologies a particular project
+  declares that it uses.
+- Detection represents repository evidence.
+- Declaration represents developer-provided project knowledge.
+- AI consumers may understand technologies that WayFinder itself does
+  not recognize.
 
 WayFinder must remain useful for projects that do not use .NET, Node,
 DeadRoute-specific conventions, or any other particular ecosystem.
@@ -452,14 +491,14 @@ and context generation.
 
 Manifest version 1:
 
--   `version` is required and must be `1`.
--   `name` is optional.
--   `technologies` is required and may be empty.
--   Technology identifiers must be non-empty.
--   Duplicate technology identifiers are invalid.
--   Unknown technology identifiers are valid.
--   Extra JSON properties should remain tolerated for forward
-    compatibility.
+- `version` is required and must be `1`.
+- `name` is optional.
+- `technologies` is required and may be empty.
+- Technology identifiers must be non-empty.
+- Duplicate technology identifiers are invalid.
+- Unknown technology identifiers are valid.
+- Extra JSON properties should remain tolerated for forward
+  compatibility.
 
 Reading project manifests must go through `IProjectFileSystem`. Do not
 bypass the project filesystem security boundary with direct arbitrary
@@ -486,21 +525,21 @@ does not grant permission to modify the project.
 
 A registered project may be:
 
--   inspected;
--   searched;
--   read through bounded WayFinder read operations;
--   used to construct project context.
+- inspected;
+- searched;
+- read through bounded WayFinder read operations;
+- used to construct project context.
 
 Registration alone must never permit:
 
--   creating files;
--   modifying files;
--   deleting files;
--   executing arbitrary commands;
--   changing Git state;
--   committing or pushing;
--   installing dependencies;
--   running arbitrary scripts.
+- creating files;
+- modifying files;
+- deleting files;
+- executing arbitrary commands;
+- changing Git state;
+- committing or pushing;
+- installing dependencies;
+- running arbitrary scripts.
 
 Any future AI-facing mutation capability must use a separate explicit
 authorization model. Write authorization must never be inferred from
@@ -529,7 +568,7 @@ detectors unknown to the CLI.
 
 Avoid hardcoding rendering logic such as:
 
-``` text
+```text
 WriteDotNetSection
 WriteNodeSection
 WriteRustSection
@@ -539,7 +578,7 @@ when generic artifact rendering is sufficient.
 
 Machine-facing MCP output should prefer structured data over prose.
 
-------------------------------------------------------------------------
+---
 
 ## Determinism
 
@@ -547,24 +586,24 @@ WayFinder should produce deterministic results wherever practical.
 
 Stable ordering is preferred for:
 
--   files
--   search results
--   project artifacts
--   Git output
--   structured MCP responses
+- files
+- search results
+- project artifacts
+- Git output
+- structured MCP responses
 
 Deterministic output improves:
 
--   reproducibility
--   testing
--   diff quality
--   caching
--   AI context stability
--   token efficiency
+- reproducibility
+- testing
+- diff quality
+- caching
+- AI context stability
+- token efficiency
 
 Do not depend on filesystem enumeration order.
 
-------------------------------------------------------------------------
+---
 
 ## Token Efficiency
 
@@ -577,23 +616,23 @@ Repository operations should support bounded output.
 
 Examples include:
 
--   maximum result count
--   maximum lines
--   maximum bytes
--   targeted file ranges
--   search snippets
--   truncation metadata
--   continuation mechanisms
+- maximum result count
+- maximum lines
+- maximum bytes
+- targeted file ranges
+- search snippets
+- truncation metadata
+- continuation mechanisms
 
 Prefer:
 
-``` text
+```text
 small structured result
 ```
 
 over:
 
-``` text
+```text
 large repository dump
 ```
 
@@ -602,10 +641,10 @@ strategy.
 
 Future telemetry should distinguish between:
 
--   operation duration
--   output bytes
--   approximate emitted context tokens
--   provider-reported model token usage, when available
+- operation duration
+- output bytes
+- approximate emitted context tokens
+- provider-reported model token usage, when available
 
 Do not present approximate context size as authoritative billing
 information.
@@ -617,7 +656,7 @@ package for a development task without making a model call.
 
 The context compiler follows this conceptual pipeline:
 
-``` text
+```text
 Task
 → Discover
 → Rank
@@ -636,7 +675,7 @@ expose only the materialized context required by the consumer.
 
 The intended AI exploration pattern is:
 
-``` text
+```text
 context
 → targeted repo_search when more evidence is needed
 → repo_read for specific files
@@ -656,7 +695,7 @@ and still provided useful orientation. The 2,000-token run also succeeded but
 required more follow-up exploration. Treat 4,000 as a practical MCP default
 observed through dogfooding, not as a provider-neutral optimum.
 
-------------------------------------------------------------------------
+---
 
 ## Repository Search
 
@@ -668,14 +707,14 @@ project-relative, and text-only.
 
 Current V1 behavior:
 
--   ordinal case-insensitive literal text matching;
--   maximum 50 returned matches;
--   maximum 300 characters per returned line;
--   files larger than 1 MiB are skipped;
--   binary/NUL-containing and malformed UTF-8 files are skipped;
--   results are ordered deterministically by path and line;
--   `Truncated` indicates that additional matches existed beyond the
-    returned result budget.
+- ordinal case-insensitive literal text matching;
+- maximum 50 returned matches;
+- maximum 300 characters per returned line;
+- files larger than 1 MiB are skipped;
+- binary/NUL-containing and malformed UTF-8 files are skipped;
+- results are ordered deterministically by path and line;
+- `Truncated` indicates that additional matches existed beyond the
+  returned result budget.
 
 The MCP `repo_search` query is a single literal search string. Do not
 describe or treat it as a regular expression, glob, or multi-term OR
@@ -685,7 +724,7 @@ Repository search must respect project boundaries and output budgets.
 
 Ignored generated/build directories currently include:
 
-``` text
+```text
 .git
 .idea
 .vs
@@ -704,7 +743,7 @@ has not yet been adopted as policy.
 Do not implement a custom `.gitignore` parser unless there is a strong
 reason to do so.
 
-------------------------------------------------------------------------
+---
 
 ## AI Working Style
 
@@ -713,7 +752,7 @@ AI, not eliminate that collaboration.
 
 The desired development workflow is:
 
-``` text
+```text
 inspect
 → discuss
 → decide
@@ -726,26 +765,26 @@ inspect
 AI agents may autonomously perform mechanical tasks when explicitly
 permitted, such as:
 
--   locating files
--   reading bounded source sections
--   finding references
--   running tests
--   running builds
--   inspecting Git status
--   inspecting Git diffs
--   validating changes
+- locating files
+- reading bounded source sections
+- finding references
+- running tests
+- running builds
+- inspecting Git status
+- inspecting Git diffs
+- validating changes
 
 AI agents should not silently make product or architecture decisions.
 
 Examples requiring discussion include:
 
--   architecture changes
--   security model changes
--   public API design
--   UX decisions
--   major dependency choices
--   changing project semantics
--   choosing the next major milestone
+- architecture changes
+- security model changes
+- public API design
+- UX decisions
+- major dependency choices
+- changing project semantics
+- choosing the next major milestone
 
 When implementation reveals a design decision, surface the decision
 instead of silently choosing a direction.
@@ -756,7 +795,7 @@ example without a durable invariant or repeated evidence.
 
 Use this rule:
 
-``` text
+```text
 dogfood to discover problems
 → generalize only when the problem represents a real invariant or repeats
 ```
@@ -764,7 +803,7 @@ dogfood to discover problems
 Avoid tuning core architecture around quirks of a particular model,
 provider, or single experiment.
 
-------------------------------------------------------------------------
+---
 
 ## Write Operations
 
@@ -779,7 +818,7 @@ Read and write permissions should remain conceptually separate.
 Potentially destructive operations require stronger safeguards than
 inspection operations.
 
-------------------------------------------------------------------------
+---
 
 ## Testing
 
@@ -790,7 +829,7 @@ violations.
 
 Examples include:
 
-``` text
+```text
 normal project-relative path          allowed
 ../ traversal                         rejected
 absolute path                         rejected
@@ -804,7 +843,7 @@ considering the issue resolved.
 
 Run:
 
-``` text
+```text
 dotnet test
 dotnet build
 ```
@@ -813,7 +852,7 @@ before considering an implementation milestone complete.
 
 Warnings are treated as errors.
 
-------------------------------------------------------------------------
+---
 
 ## C# Style
 
@@ -830,7 +869,7 @@ they fit comfortably.
 
 Preferred:
 
-``` text
+```text
 var battery = new Battery(capacity: 100, charge: 75);
 ```
 
@@ -843,7 +882,7 @@ classes.
 Do not introduce abstractions solely in anticipation of hypothetical
 future requirements.
 
-------------------------------------------------------------------------
+---
 
 ## Dependency Policy
 
@@ -851,24 +890,24 @@ Keep external dependencies deliberate and minimal.
 
 Before adding a package, consider whether:
 
--   the .NET platform already provides the capability
--   the package materially reduces complexity
--   the package is maintained
--   it works cross-platform
--   its functionality belongs in WayFinder's trusted security boundary
+- the .NET platform already provides the capability
+- the package materially reduces complexity
+- the package is maintained
+- it works cross-platform
+- its functionality belongs in WayFinder's trusted security boundary
 
 Do not add dependencies merely to avoid writing trivial code.
 
 Conversely, do not implement complex standards such as `.gitignore`
 parsing from scratch when a mature solution is preferable.
 
-------------------------------------------------------------------------
+---
 
 ## Current Direction
 
 The implementation sequence remains:
 
-``` text
+```text
 1. Foundation and project discovery
 2. Safe project filesystem boundary
 3. Project intelligence and detection
@@ -908,7 +947,7 @@ line values and a maximum `lineCount` of 500.
 
 The MCP response uses one stable schema with an explicit mode:
 
-``` text
+```text
 file   → Truncated is populated; StartLine and EndLine are null
 range  → Truncated is null; StartLine is populated; EndLine is the actual
          final returned line or null for an empty range
@@ -917,7 +956,7 @@ range  → Truncated is null; StartLine is populated; EndLine is the actual
 Real Copilot CLI dogfooding demonstrated the intended cross-project flow
 without first calling `projects`:
 
-``` text
+```text
 repo_search(project: "DeadRoute", query: "EditorPanel")
 → targeted repo_read(project: "DeadRoute", ..., startLine: 1185, lineCount: 60)
 → lines 1185–1244
@@ -930,7 +969,7 @@ provider-neutral billing telemetry.
 Further Copilot CLI dogfooding exercised the complete intended investigation
 workflow against `WayFinder.DevTools`:
 
-``` text
+```text
 context(project: "WayFinder.DevTools", task: ...)
 → targeted repo_search for missing evidence
 → repo_read for identified implementation files
@@ -969,7 +1008,7 @@ The next milestone should be selected from evidence gathered through
 further dogfooding and discussion. Do not silently advance to controlled
 execution or project-specific intelligence.
 
-------------------------------------------------------------------------
+---
 
 ## Design Principle
 
