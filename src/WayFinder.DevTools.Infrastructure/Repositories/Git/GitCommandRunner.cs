@@ -9,6 +9,13 @@ internal sealed class GitCommandRunner
 
     private const int MaxLogOutputBytes = 65_536; // 64 KB
 
+    private readonly IReadOnlyDictionary<string, string>? _environmentOverrides;
+
+    public GitCommandRunner(IReadOnlyDictionary<string, string>? environmentOverrides = null)
+    {
+        _environmentOverrides = environmentOverrides;
+    }
+
     public string GetStatus(string repositoryPath)
     {
         return Run(
@@ -151,7 +158,7 @@ internal sealed class GitCommandRunner
         return result.ExitCode == 0;
     }
 
-    private static GitCommandResult Run(
+    private GitCommandResult Run(
         string repositoryPath,
         IReadOnlyList<string> arguments,
         IReadOnlySet<int>? permittedExitCodes = null
@@ -226,7 +233,7 @@ internal sealed class GitCommandRunner
         string Output
     );
 
-    private static GitDiffCommandResult RunBoundedDiff(
+    private GitDiffCommandResult RunBoundedDiff(
         string repositoryPath,
         IReadOnlyList<string> arguments,
         int maxOutputBytes
@@ -315,7 +322,7 @@ internal sealed class GitCommandRunner
         }
     }
 
-    private static string RunBoundedLog(
+    private string RunBoundedLog(
         string repositoryPath,
         IReadOnlyList<string> arguments,
         int maxOutputBytes
@@ -387,7 +394,7 @@ internal sealed class GitCommandRunner
         }
     }
 
-    private static ProcessStartInfo CreateStartInfo(
+    private ProcessStartInfo CreateStartInfo(
         string repositoryPath,
         IReadOnlyList<string> arguments
     )
@@ -409,6 +416,32 @@ internal sealed class GitCommandRunner
         foreach (var argument in arguments)
         {
             startInfo.ArgumentList.Add(argument);
+        }
+
+        // Apply environment overrides to this child process only.
+        if (_environmentOverrides is not null)
+        {
+            foreach (var (key, value) in _environmentOverrides)
+            {
+                startInfo.Environment[key] = value;
+            }
+        }
+
+        // Git subprocesses must not inherit Git-specific environment settings.
+        //
+        // These variables can override repository locations, configuration,
+        // indexes, object databases, executable paths, and other Git behavior.
+        //
+        // Preserve ordinary environment variables required for cross-platform
+        // process execution, but remove all inherited Git-specific settings.
+        foreach (var key in startInfo.Environment.Keys
+            .Where(key => key.StartsWith(
+                "GIT_",
+                StringComparison.OrdinalIgnoreCase
+            ))
+            .ToArray())
+        {
+            startInfo.Environment.Remove(key);
         }
 
         return startInfo;
