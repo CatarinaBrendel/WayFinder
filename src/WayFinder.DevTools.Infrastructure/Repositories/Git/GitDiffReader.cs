@@ -30,7 +30,7 @@ public sealed class GitDiffReader : IGitDiffReader
             );
         }
 
-        var path = ValidatePath(
+        var path = GitRepositoryPathValidator.Validate(
             project.RootPath,
             request.Path
         );
@@ -58,87 +58,4 @@ public sealed class GitDiffReader : IGitDiffReader
         );
     }
 
-    private static string? ValidatePath(
-        string repositoryRoot,
-        string? path
-    )
-    {
-        if (path is null)
-        {
-            return null;
-        }
-
-        if (string.IsNullOrWhiteSpace(path))
-        {
-            throw new ArgumentException(
-                "Git diff path cannot be empty.",
-                nameof(path)
-            );
-        }
-
-        if (Path.IsPathRooted(path))
-        {
-            throw new ArgumentException(
-                "Git diff path must be repository-relative.",
-                nameof(path)
-            );
-        }
-
-        if (path.StartsWith(':'))
-        {
-            throw new ArgumentException(
-                "Git pathspec magic is not allowed.",
-                nameof(path)
-            );
-        }
-
-        if (path.Contains('*')
-            || path.Contains('?')
-            || path.Contains('[')
-            || path.Contains(']'))
-        {
-            throw new ArgumentException(
-                "Git diff path must be a literal path.",
-                nameof(path)
-            );
-        }
-
-        var root = Path.GetFullPath(repositoryRoot);
-
-        var fullPath = Path.GetFullPath(
-            path,
-            root
-        );
-
-        if (!Path.IsPathFullyQualified(fullPath))
-        {
-            throw new ArgumentException(
-                "Invalid Git diff path.",
-                nameof(path)
-            );
-        }
-
-        var relativePath = Path.GetRelativePath(
-            root,
-            fullPath
-        );
-
-        if (relativePath == ".."
-            || relativePath.StartsWith(
-                $"..{Path.DirectorySeparatorChar}",
-                StringComparison.Ordinal
-            )
-            || Path.IsPathRooted(relativePath))
-        {
-            throw new ArgumentException(
-                "Git diff path must remain inside the repository.",
-                nameof(path)
-            );
-        }
-
-        return relativePath.Replace(
-            Path.DirectorySeparatorChar,
-            '/'
-        );
-    }
 }

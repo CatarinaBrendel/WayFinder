@@ -163,6 +163,11 @@ public sealed class GitLogReaderTests : IDisposable
     [InlineData("*.cs")]
     [InlineData("")]
     [InlineData(" ")]
+    [InlineData("..\\outside.txt")]
+    [InlineData("folder\\..\\file.txt")]
+    [InlineData("folder/./file.txt")]
+    [InlineData("C:relative.txt")]
+    [InlineData("\\Windows\\system.ini")]
     public void Read_InvalidPath_Throws(string path)
     {
         Assert.Throws<ArgumentException>(
@@ -203,6 +208,34 @@ public sealed class GitLogReaderTests : IDisposable
                 Project(),
                 null!
             )
+        );
+    }
+
+    [Fact]
+    public void Read_WindowsStylePath_ReturnsMatchingHistory()
+    {
+        Directory.CreateDirectory(
+            Path.Combine(_root, "src")
+        );
+
+        CommitFile(
+            "src/example.txt",
+            "content",
+            "Add example file"
+        );
+
+        var result = _reader.Read(
+            Project(),
+            new GitLogRequest(
+                Path: "src\\example.txt"
+            )
+        );
+
+        var commit = Assert.Single(result.Commits);
+
+        Assert.Equal(
+            "Add example file",
+            commit.Subject
         );
     }
 

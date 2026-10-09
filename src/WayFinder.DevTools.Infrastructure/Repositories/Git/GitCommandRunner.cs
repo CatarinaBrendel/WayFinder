@@ -251,8 +251,6 @@ internal sealed class GitCommandRunner
 
             using var buffer = new MemoryStream();
 
-            var chunk = new byte[8192];
-
             var truncated = ReadBoundedOutput(
                 process,
                 buffer,

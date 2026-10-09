@@ -31,7 +31,7 @@ public sealed class GitLogReader : IGitLogReader
             );
         }
 
-        var path = ValidatePath(
+        var path = GitRepositoryPathValidator.Validate(
             project.RootPath,
             request.Path
         );
@@ -52,107 +52,6 @@ public sealed class GitLogReader : IGitLogReader
             RepositoryName: project.Name,
             Branch: branch,
             Commits: commits
-        );
-    }
-
-    private static string? ValidatePath(
-        string repositoryRoot,
-        string? path
-    )
-    {
-        if (path is null)
-        {
-            return null;
-        }
-
-        if (string.IsNullOrWhiteSpace(path))
-        {
-            throw new ArgumentException(
-                "Git log path cannot be empty.",
-                nameof(path)
-            );
-        }
-
-        if (Path.IsPathRooted(path))
-        {
-            throw new ArgumentException(
-                "Git log path must be repository-relative.",
-                nameof(path)
-            );
-        }
-
-        if (path.StartsWith(':'))
-        {
-            throw new ArgumentException(
-                "Git pathspec magic is not allowed.",
-                nameof(path)
-            );
-        }
-
-        if (path.Contains('*')
-            || path.Contains('?')
-            || path.Contains('[')
-            || path.Contains(']'))
-        {
-            throw new ArgumentException(
-                "Git log path must be a literal path.",
-                nameof(path)
-            );
-        }
-
-        // Reject Windows drive-qualified paths on all platforms.
-        if (path.Length >= 2
-            && char.IsLetter(path[0])
-            && path[1] == ':')
-        {
-            throw new ArgumentException(
-                "Git log path must be repository-relative.",
-                nameof(path)
-            );
-        }
-
-        // Normalize Windows separators on macOS/Linux as well.
-        var normalizedPath = path.Replace('\\', '/');
-
-        var segments = normalizedPath.Split('/');
-
-        if (segments.Any(segment =>
-                segment is "" or "." or ".."))
-        {
-            throw new ArgumentException(
-                "Git log path contains invalid segments.",
-                nameof(path)
-            );
-        }
-
-        var root = Path.GetFullPath(repositoryRoot);
-
-        var fullPath = Path.GetFullPath(
-            normalizedPath,
-            root
-        );
-
-        var relativePath = Path.GetRelativePath(
-            root,
-            fullPath
-        );
-
-        if (relativePath == ".."
-            || relativePath.StartsWith(
-                $"..{Path.DirectorySeparatorChar}",
-                StringComparison.Ordinal
-            )
-            || Path.IsPathRooted(relativePath))
-        {
-            throw new ArgumentException(
-                "Git log path must remain inside the repository.",
-                nameof(path)
-            );
-        }
-
-        return relativePath.Replace(
-            Path.DirectorySeparatorChar,
-            '/'
         );
     }
 }

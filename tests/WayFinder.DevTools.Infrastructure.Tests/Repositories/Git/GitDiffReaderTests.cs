@@ -131,6 +131,9 @@ public sealed class GitDiffReaderTests : IDisposable
     [InlineData("../outside.txt")]
     [InlineData("../../outside.txt")]
     [InlineData("src/../../../outside.txt")]
+    [InlineData("..\\outside.txt")]
+    [InlineData("src\\..\\outside.txt")]
+    [InlineData("src/../outside.txt")]
     public void Read_PathTraversal_Throws(string path)
     {
         Assert.Throws<ArgumentException>(
@@ -237,6 +240,21 @@ public sealed class GitDiffReaderTests : IDisposable
         Assert.True(
             System.Text.Encoding.UTF8.GetByteCount(result.Content)
             <= 128
+        );
+    }
+
+    [Theory]
+    [InlineData("C:\\Windows\\system.ini")]
+    [InlineData("C:relative.txt")]
+    [InlineData("src//example.txt")]
+    [InlineData("src/./example.txt")]
+    public void Read_InvalidPath_Throws(string path)
+    {
+        Assert.Throws<ArgumentException>(
+            () => _reader.Read(
+                _project,
+                new GitDiffRequest(Path: path)
+            )
         );
     }
 
