@@ -9,6 +9,8 @@ internal sealed class GitCommandRunner
 
     private const int MaxLogOutputBytes = 65_536; // 64 KB
 
+    private const int MaxStatusOutputBytes = 256 * 1024; // 256 KiB
+
     private readonly IReadOnlyDictionary<string, string>? _environmentOverrides;
 
     public GitCommandRunner(IReadOnlyDictionary<string, string>? environmentOverrides = null)
@@ -18,16 +20,16 @@ internal sealed class GitCommandRunner
 
     public string GetStatus(string repositoryPath)
     {
-        return Run(
+        return RunBoundedStatus(
             repositoryPath,
             [
                 "--no-optional-locks",
-                "status",
-                "--porcelain=v1",
-                "-z",
-                "--untracked-files=all",
+            "status",
+            "--porcelain=v1",
+            "-z",
+            "--untracked-files=all",
             ]
-        ).Output;
+        );
     }
 
     public string? GetBranch(string repositoryPath)
@@ -97,6 +99,7 @@ internal sealed class GitCommandRunner
             maxOutputBytes
         );
     }
+
     public string GetLog(
         string repositoryPath,
         int count,
@@ -497,6 +500,73 @@ internal sealed class GitCommandRunner
             }
 
             buffer.Write(chunk, 0, read);
+        }
+    }
+
+    private string RunBoundedStatus(
+        string repositoryPath,
+        IReadOnlyList<string> arguments
+    )
+    {
+        var startInfo = CreateStartInfo(repositoryPath, arguments);
+
+        using var process = new Process
+        {
+            StartInfo = startInfo
+        };
+
+        process.Start();
+
+        using var cancellation = new CancellationTokenSource(Timeout);
+
+        try
+        {
+            var errorTask = process.StandardError.ReadToEndAsync(
+                cancellation.Token
+            );
+
+            using var buffer = new MemoryStream();
+
+            var exceededLimit = ReadBoundedOutput(
+                process,
+                buffer,
+                MaxStatusOutputBytes,
+                cancellation.Token
+            );
+
+            if (exceededLimit)
+            {
+                TerminateProcess(process);
+
+                throw new InvalidOperationException(
+                    $"Git status output exceeds the {MaxStatusOutputBytes:N0}-byte limit."
+                );
+            }
+
+            process.WaitForExitAsync(cancellation.Token)
+                .GetAwaiter()
+                .GetResult();
+
+            var error = errorTask.GetAwaiter().GetResult();
+
+            if (process.ExitCode != 0)
+            {
+                throw new InvalidOperationException(
+                    $"Git status failed (exit code {process.ExitCode}): {error.Trim()}"
+                );
+            }
+
+            return new UTF8Encoding(false, true).GetString(
+                buffer.ToArray()
+            );
+        }
+        catch (OperationCanceledException) when (cancellation.IsCancellationRequested)
+        {
+            TerminateProcess(process);
+
+            throw new TimeoutException(
+                $"Git status exceeded the {Timeout.TotalSeconds:0}-second timeout."
+            );
         }
     }
 }

@@ -656,6 +656,110 @@ public sealed class GitCommandRunnerTests : IDisposable
         );
     }
 
+    [Fact]
+    public void GetStatus_RejectsOutputExceedingLimit()
+    {
+        // Arrange
+        // Create enough untracked files to exceed the 256 KiB limit.
+        const int fileCount = 6_000;
+
+        for (var i = 0; i < fileCount; i++)
+        {
+            var filename = $"untracked-file-{i:D6}-with-a-long-name.txt";
+
+            File.WriteAllText(
+                Path.Combine(_root, filename),
+                "content"
+            );
+        }
+
+        // Act
+        var exception = Record.Exception(
+            () => _runner.GetStatus(_root)
+        );
+
+        // Assert
+        var error = Assert.IsType<InvalidOperationException>(
+            exception
+        );
+
+        Assert.Contains(
+            "Git status output exceeds",
+            error.Message
+        );
+    }
+
+    [Fact]
+    public void GetStatus_PreservesNullDelimitedPorcelainOutput()
+    {
+        // Arrange
+        File.WriteAllText(
+            Path.Combine(_root, "tracked.txt"),
+            "original content"
+        );
+
+        Git("add", "tracked.txt");
+        Git("commit", "-q", "-m", "Initial commit");
+
+        File.WriteAllText(
+            Path.Combine(_root, "tracked.txt"),
+            "modified content"
+        );
+
+        File.WriteAllText(
+            Path.Combine(_root, "untracked.txt"),
+            "new content"
+        );
+
+        // Act
+        var result = _runner.GetStatus(_root);
+
+        // Assert
+        Assert.Contains(" M tracked.txt\0", result);
+        Assert.Contains("?? untracked.txt\0", result);
+
+        Assert.EndsWith("\0", result);
+    }
+
+    [Fact]
+    public void GetStatus_EnforcesByteLimitForUnicodeFilenames()
+    {
+        // Arrange
+        // Each filename contains multibyte UTF-8 characters.
+        // The total output exceeds 256 KiB.
+        const int fileCount = 4_000;
+
+        for (var i = 0; i < fileCount; i++)
+        {
+            var filename =
+                $"日本語ファイル名日本語ファイル名日本語ファイル名-{i:D6}.txt";
+
+            File.WriteAllText(
+                Path.Combine(_root, filename),
+                "content"
+            );
+        }
+
+        // Git quotes non-ASCII paths by default. Disable that behavior
+        // so the test exercises actual UTF-8 filenames in stdout.
+        Git("config", "core.quotePath", "false");
+
+        // Act
+        var exception = Record.Exception(
+            () => _runner.GetStatus(_root)
+        );
+
+        // Assert
+        var error = Assert.IsType<InvalidOperationException>(
+            exception
+        );
+
+        Assert.Contains(
+            "Git status output exceeds",
+            error.Message
+        );
+    }
+
     private void Git(params string[] arguments)
     {
         var startInfo = new ProcessStartInfo
