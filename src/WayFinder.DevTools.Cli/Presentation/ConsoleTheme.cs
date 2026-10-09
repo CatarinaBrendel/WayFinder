@@ -22,6 +22,16 @@ internal static class ConsoleTheme
             )
         );
 
+    public static string Added(
+        string text
+    ) =>
+        Colorize(text, Green);
+
+    public static string Removed(
+        string text
+    ) =>
+        Colorize(text, Red);
+
     public static string Success(
         string text
     ) =>

@@ -1,5 +1,6 @@
 using System.CommandLine;
 using WayFinder.DevTools.Cli.Commands;
+using WayFinder.DevTools.Cli.Commands.Git;
 using WayFinder.DevTools.Cli.Commands.Projects;
 using WayFinder.DevTools.Cli.Commands.Repositories;
 using WayFinder.DevTools.Cli.Presentation;
@@ -35,6 +36,10 @@ rootCommand.Add(
 
 rootCommand.Add(
     TreeCommand.Create(services)
+);
+
+rootCommand.Add(
+    GitCommand.Create(services)
 );
 
 if (args.Length == 0

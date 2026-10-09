@@ -14,6 +14,7 @@ using WayFinder.DevTools.Infrastructure.Projects.Registry;
 using WayFinder.DevTools.Infrastructure.Repositories.Reading;
 using WayFinder.DevTools.Infrastructure.Repositories.Searching;
 using WayFinder.DevTools.Application.Projects.Tree;
+using WayFinder.DevTools.Infrastructure.Repositories.Git;
 
 namespace WayFinder.DevTools.Infrastructure.Composition;
 
@@ -41,6 +42,15 @@ public static class WayFinderComposition
             new RepositoryFileReader(
                 projectFileSystem
             );
+
+        var gitStatusReader =
+            new GitStatusReader();
+
+        var gitDiffReader =
+            new GitDiffReader();
+
+        var gitLogReader =
+            new GitLogReader();
 
         var signatureProvider =
             new JsonTechnologySignatureProvider();
@@ -116,7 +126,10 @@ public static class WayFinderComposition
             RepositorySearcher: repositorySearcher,
             Doctor: doctor,
             ContextCompiler: contextCompiler,
-            RegisteredProjectResolver: registeredProjectResolver
+            RegisteredProjectResolver: registeredProjectResolver,
+            GitStatusReader: gitStatusReader,
+            GitDiffReader: gitDiffReader,
+            GitLogReader: gitLogReader
         );
     }
 }
