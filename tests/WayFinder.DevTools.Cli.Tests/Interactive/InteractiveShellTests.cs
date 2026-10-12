@@ -1,4 +1,5 @@
 using WayFinder.DevTools.Cli.Interactive;
+using WayFinder.DevTools.Application.Conversations;
 
 namespace WayFinder.DevTools.Tests.Cli;
 
@@ -126,5 +127,54 @@ public sealed class InteractiveShellTests
         var exitCode = await shell.RunAsync();
 
         Assert.Equal(0, exitCode);
+    }
+
+    [Fact]
+    public async Task RunAsync_WithSession_ProcessesConversation()
+    {
+        using var input = new StringReader(
+            "Hello\nHow are you?\n/exit\n"
+        );
+
+        using var output = new StringWriter();
+
+        var provider = new FakeAiProvider();
+        var session = new ConversationSession(provider);
+
+        var shell = new InteractiveShell(
+            input,
+            output,
+            session
+        );
+
+        var exitCode = await shell.RunAsync();
+
+        Assert.Equal(0, exitCode);
+
+        Assert.Contains("Response 1", output.ToString());
+        Assert.Contains("Response 2", output.ToString());
+        Assert.Contains("Copilot", output.ToString());
+
+        Assert.Equal(4, session.Messages.Count);
+    }
+
+    private sealed class FakeAiProvider : IAiProvider
+    {
+        private int _requestCount;
+
+        public string Id => "fake";
+
+        public Task<ConversationResponse> CompleteAsync(
+            ConversationRequest request,
+            CancellationToken cancellationToken = default)
+        {
+            _requestCount++;
+
+            return Task.FromResult(
+                new ConversationResponse(
+                    $"Response {_requestCount}"
+                )
+            );
+        }
     }
 }

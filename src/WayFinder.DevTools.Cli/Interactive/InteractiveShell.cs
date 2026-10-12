@@ -1,3 +1,4 @@
+using WayFinder.DevTools.Application.Conversations;
 using WayFinder.DevTools.Cli.Presentation;
 
 namespace WayFinder.DevTools.Cli.Interactive;
@@ -6,20 +7,31 @@ public sealed class InteractiveShell
 {
     private readonly TextReader _input;
     private readonly TextWriter _output;
+    private readonly ConversationSession? _session;
+
+    private string? ProviderName => _session?.ProviderId switch
+    {
+        "copilot" => "GitHub Copilot",
+        null => null,
+        var id => id
+    };
 
     public InteractiveShell(
         TextReader input,
-        TextWriter output)
+        TextWriter output,
+        ConversationSession? session = null)
     {
         _input = input;
         _output = output;
+        _session = session;
     }
 
     public async Task<int> RunAsync(
         CancellationToken cancellationToken = default)
     {
         InteractivePresentation.WriteHeader(
-            _output
+            _output,
+            ProviderName
         );
 
         while (!cancellationToken.IsCancellationRequested)
@@ -75,7 +87,8 @@ public sealed class InteractiveShell
                 case "/status":
 
                     InteractivePresentation.WriteStatus(
-                        _output
+                        _output,
+                        ProviderName
                     );
 
                     break;
@@ -94,9 +107,45 @@ public sealed class InteractiveShell
 
                 default:
 
-                    InteractivePresentation.WriteMissingProvider(
-                        _output
-                    );
+                    if (_session is null)
+                    {
+                        InteractivePresentation.WriteMissingProvider(
+                            _output
+                        );
+
+                        break;
+                    }
+
+                    try
+                    {
+                        ConversationResponse response;
+
+                        using (var spinner =
+                            ReferenceEquals(_output, Console.Out)
+                                ? ConsoleSpinner.StartRandom()
+                                : null)
+                        {
+                            response = await _session.SendAsync(
+                                command,
+                                cancellationToken
+                            );
+                        }
+
+                        InteractivePresentation.WriteResponse(
+                            _output,
+                            response
+                        );
+                    }
+                    catch (OperationCanceledException)
+                    {
+                        return 0;
+                    }
+                    catch (Exception ex)
+                    {
+                        await _output.WriteLineAsync(
+                            $"Error: {ex.Message}"
+                        );
+                    }
 
                     break;
             }

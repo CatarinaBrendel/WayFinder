@@ -5,6 +5,20 @@ internal sealed class ConsoleSpinner : IDisposable
     private static readonly char[] Frames =
         ['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏'];
 
+    private static readonly string[] Messages =
+    [
+        "Consulting the silicon oracle...",
+        "Summoning the semicolons...",
+        "Negotiating with the tokens...",
+        "Asking the rubber duck...",
+        "Untangling the stack...",
+        "Compiling thoughts...",
+        "Interrogating the bits...",
+        "Connecting the dots...",
+        "Following the breadcrumbs...",
+        "Searching for the plot..."
+    ];
+
     private readonly CancellationTokenSource _cancellation = new();
     private readonly Task _animation;
     private readonly string _message;
@@ -27,6 +41,9 @@ internal sealed class ConsoleSpinner : IDisposable
         string message
     ) =>
         new(message);
+
+    public static ConsoleSpinner StartRandom() =>
+    new(Messages[Random.Shared.Next(Messages.Length)]);
 
     public void Dispose()
     {
@@ -56,19 +73,26 @@ internal sealed class ConsoleSpinner : IDisposable
     {
         var index = 0;
 
-        while (!_cancellation.IsCancellationRequested)
+        try
         {
-            Console.Error.Write(
-                $"\r{Frames[index]} {_message}"
-            );
+            while (!_cancellation.IsCancellationRequested)
+            {
+                Console.Error.Write(
+                    $"\r{Frames[index]} {_message}"
+                );
 
-            index =
-                (index + 1) % Frames.Length;
+                index = (index + 1) % Frames.Length;
 
-            await Task.Delay(
-                100,
-                _cancellation.Token
-            );
+                await Task.Delay(
+                    100,
+                    _cancellation.Token
+                );
+            }
+        }
+        catch (OperationCanceledException)
+            when (_cancellation.IsCancellationRequested)
+        {
+            // Normal shutdown.
         }
     }
 

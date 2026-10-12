@@ -1,49 +1,54 @@
+using WayFinder.DevTools.Application.Conversations;
+
 namespace WayFinder.DevTools.Cli.Presentation;
 
 internal static class InteractivePresentation
 {
     public static void WriteHeader(
-        TextWriter output)
+        TextWriter output,
+        string? provider = null)
     {
-        output.WriteLine();
-        output.WriteLine(
-            $"  {ConsoleTheme.Rule}"
-        );
+        {
+            output.WriteLine();
+            output.WriteLine(
+                $"  {ConsoleTheme.Rule}"
+            );
 
-        output.WriteLine();
+            output.WriteLine();
 
-        output.WriteLine(
-            $"  {ConsoleTheme.Waypoint}  " +
-            ConsoleTheme.Bold("Interactive session")
-        );
+            output.WriteLine(
+                $"  {ConsoleTheme.Waypoint}  " +
+                ConsoleTheme.Bold("Interactive session")
+            );
 
-        output.WriteLine();
+            output.WriteLine();
 
-        WriteProperty(
-            output,
-            "Workspace",
-            Environment.CurrentDirectory
-        );
+            WriteProperty(
+                output,
+                "Workspace",
+                Environment.CurrentDirectory
+            );
 
-        WriteProperty(
-            output,
-            "Provider",
-            "Not configured"
-        );
+            WriteProperty(
+                output,
+                "Provider",
+                provider ?? "Not configured"
+            );
 
-        WriteProperty(
-            output,
-            "Status",
-            ConsoleTheme.Success("Ready")
-        );
+            WriteProperty(
+                output,
+                "Status",
+                ConsoleTheme.Success("Ready")
+            );
 
-        output.WriteLine();
+            output.WriteLine();
 
-        output.WriteLine(
-            $"  {ConsoleTheme.Secondary("Type /help for available commands.")}"
-        );
+            output.WriteLine(
+                $"  {ConsoleTheme.Secondary("Type /help for available commands.")}"
+            );
 
-        output.WriteLine();
+            output.WriteLine();
+        }
     }
 
     public static void WritePrompt(
@@ -93,7 +98,8 @@ internal static class InteractivePresentation
     }
 
     public static void WriteStatus(
-        TextWriter output)
+        TextWriter output,
+        string? provider = null)
     {
         WriteSection(
             output,
@@ -109,7 +115,7 @@ internal static class InteractivePresentation
         WriteProperty(
             output,
             "Provider",
-            "Not configured"
+            provider ?? "Not configured"
         );
 
         WriteProperty(
@@ -184,5 +190,59 @@ internal static class InteractivePresentation
         output.WriteLine(
             $"    {ConsoleTheme.Accent(command.PadRight(12))}{description}"
         );
+    }
+
+    public static void WriteResponse(
+        TextWriter output,
+        ConversationResponse response)
+    {
+        output.WriteLine();
+
+        output.WriteLine(
+            $"  {ConsoleTheme.Waypoint} " +
+            ConsoleTheme.Bold("Copilot")
+        );
+
+        output.WriteLine();
+
+        foreach (var line in response.Content.Split('\n'))
+        {
+            output.WriteLine(
+                $"    {line.TrimEnd('\r')}"
+            );
+        }
+
+        if (response.InputTokens is not int input ||
+            response.OutputTokens is not int outputTokens)
+        {
+            output.WriteLine();
+            return;
+        }
+
+        var model = response.Model ?? "Unknown model";
+
+        var cached = response.CachedInputTokens ?? 0;
+
+        var cachePercentage = input > 0
+            ? cached * 100.0 / input
+            : 0;
+
+        var duration = response.DurationMs.HasValue
+            ? $" · {response.DurationMs.Value / 1000:0.0}s"
+            : "";
+
+        output.WriteLine();
+
+        output.WriteLine(
+            ConsoleTheme.Secondary(
+                $"  {ConsoleTheme.Waypoint} {model} · " +
+                $"{input:N0} in · " +
+                $"{outputTokens:N0} out · " +
+                $"{cachePercentage:0.0}% cached" +
+                duration
+            )
+        );
+
+        output.WriteLine();
     }
 }
