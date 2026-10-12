@@ -85,7 +85,7 @@ internal static class ConsoleBranding
         Console.WriteLine();
     }
 
-    private static void WriteStatic()
+    public static void WriteStatic()
     {
         Console.WriteLine(
             $"  {ConsoleTheme.Accent("◇")}{ConsoleTheme.Secondary("─╮")}"

@@ -2,7 +2,7 @@ using WayFinder.DevTools.Application.Projects;
 using WayFinder.DevTools.Application.Projects.Detection;
 using WayFinder.DevTools.Application.Projects.Inspection;
 
-namespace WayFinder.DevTools.Infrastructure.Tests.Projects.Inspection;
+namespace WayFinder.DevTools.Application.Tests.Projects.Inspection;
 
 public sealed class ProjectInspectorTests
 {

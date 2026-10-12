@@ -21,6 +21,7 @@
   <ItemGroup>
     <ProjectReference Include="..\..\src\WayFinder.DevTools.Application\WayFinder.DevTools.Application.csproj" />
     <ProjectReference Include="..\..\src\WayFinder.DevTools.Infrastructure\WayFinder.DevTools.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\src\WayFinder.DevTools.Cli\WayFinder.DevTools.Cli.csproj" />
   </ItemGroup>
 
 </Project>
