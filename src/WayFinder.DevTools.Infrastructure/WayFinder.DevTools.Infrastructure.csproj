@@ -3,6 +3,7 @@
   <ItemGroup>
     <ProjectReference Include="..\WayFinder.DevTools.Application\WayFinder.DevTools.Application.csproj" />
     <EmbeddedResource Include="Resources\technologies.json" />
+    <InternalsVisibleTo Include="WayFinder.DevTools.Infrastructure.Tests" />
   </ItemGroup>
 
 </Project>

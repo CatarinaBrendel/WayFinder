@@ -20,6 +20,31 @@ depend on a specific AI provider.
 
 ---
 
+## Project Documentation
+
+The repository maintains three primary documents:
+
+- `AGENTS.md`: Architecture, security invariants, coding conventions,
+  and instructions for AI agents.
+- `ROADMAP.md`: Planned capabilities, development milestones,
+  priorities, and future directions.
+- `CHANGELOG.md`: Completed changes and implementation history.
+
+AI agents should consult these documents before proposing
+architectural changes or beginning a new milestone.
+
+Documentation responsibilities:
+
+- Keep durable engineering rules in `AGENTS.md`.
+- Maintain development plans and milestone status in `ROADMAP.md`.
+- Record completed changes in `CHANGELOG.md`.
+- Avoid duplicating milestone histories or test counts in `AGENTS.md`.
+
+When completing a milestone, update `ROADMAP.md` and `CHANGELOG.md`
+before committing.
+
+---
+
 ## Development Environment
 
 WayFinder is developed primarily on macOS and must remain cross-platform
@@ -130,6 +155,9 @@ projects
 context
 repo_search
 repo_read
+git_status
+git_diff
+git_log
 ```
 
 MCP tools must remain thin adapters. Validation and response mapping
@@ -745,6 +773,103 @@ reason to do so.
 
 ---
 
+## Git Integration
+
+WayFinder provides read-only Git repository inspection through MCP.
+
+### Available MCP Tools
+
+- `git_status`: Returns the repository's working tree status.
+- `git_diff`: Returns staged or unstaged changes, optionally restricted
+  to a specific path. Supports stat-only output and truncation.
+- `git_log`: Returns recent commit history, optionally filtered by path.
+
+All tools operate exclusively on registered repositories.
+
+### Implementation
+
+The Git implementation resides in:
+
+`src/WayFinder.DevTools.Infrastructure/Repositories/Git/`
+
+`GitCommandRunner` is responsible for executing Git subprocesses.
+
+### Security Requirements
+
+Future changes MUST preserve the following constraints:
+
+1. Git operations must remain read-only.
+2. Never execute arbitrary Git commands supplied by an AI agent.
+3. Never execute Git commands through a shell.
+4. Use `ProcessStartInfo.ArgumentList` for argument handling.
+5. Validate repository paths before executing Git.
+6. Validate user-supplied file paths against the repository boundary.
+7. Use literal Git pathspecs to prevent pathspec injection.
+8. Remove inherited `GIT_*` environment variables.
+9. Disable repository-configured filesystem monitors.
+10. Disable external diff tools and text conversion for diff operations.
+11. Enforce execution timeouts and bounded output.
+12. Terminate subprocesses when output limits are exceeded.
+13. Preserve strict UTF-8 decoding.
+
+### Resource Limits
+
+| Operation                  | stdout limit | stderr limit |
+| -------------------------- | -----------: | -----------: |
+| Git branch / commit checks |        4 KiB |       16 KiB |
+| Git status                 |      256 KiB |       16 KiB |
+| Git log                    |       64 KiB |       16 KiB |
+| Git diff                   | Configurable |       16 KiB |
+
+All Git subprocesses have a 15-second execution timeout.
+
+Oversized status, log, and command output is rejected.
+
+Oversized diff output is truncated and reported as truncated.
+
+### Security Limitations
+
+Read-only Git commands are not necessarily free of side effects.
+
+Git status may invoke repository-configured clean filters.
+
+Therefore:
+
+- Only explicitly registered and trusted repositories may be inspected.
+- Do not treat Git repository configuration as inherently safe.
+- Do not describe the Git integration as a complete sandbox.
+- Do not expand Git command capabilities without reviewing
+  potential subprocess execution and filesystem side effects.
+
+### Testing
+
+Git integration changes must preserve existing regression coverage.
+
+Run:
+
+```bash
+dotnet test
+git diff --check
+```
+
+Tests should cover:
+
+- Repository and path validation.
+- Git argument and pathspec injection.
+- Git environment isolation.
+- Output limits and UTF-8 handling.
+- Process termination and timeouts.
+- MCP tool behavior and error handling.
+
+### Development Guidelines
+
+- Prefer small, incremental changes.
+- Run tests after each meaningful change.
+- Avoid introducing unnecessary abstractions.
+- Do not refactor working Git infrastructure without a concrete reason.
+- Preserve the existing MCP tool contracts.
+- Keep MCP responses compact to minimize token consumption.
+
 ## AI Working Style
 
 WayFinder is intended to improve collaboration between the developer and
@@ -905,108 +1030,31 @@ parsing from scratch when a mature solution is preferable.
 
 ## Current Direction
 
-The implementation sequence remains:
+WayFinder development follows the priorities and milestones
+documented in `ROADMAP.md`.
 
-```text
-1. Foundation and project discovery
-2. Safe project filesystem boundary
-3. Project intelligence and detection
-4. Project registry
-5. Repository intelligence
-6. MCP adapter
-7. Controlled execution capabilities
-8. Project-specific intelligence
-```
+Before beginning a new milestone:
 
-Stages 1 through 6 now have working implementations. In particular, the
-MCP adapter has been exercised through a real external MCP client using
-the `projects`, `context`, `repo_search`, and `repo_read` tools.
+1. Review the current roadmap.
+2. Inspect the existing implementation.
+3. Identify the smallest useful development increment.
+4. Discuss architectural or security implications.
+5. Implement and test incrementally.
+6. Update documentation after completing the milestone.
 
-The current MCP surface remains read-only. Do not silently advance to
-controlled execution or project-specific intelligence merely because
-they are later in the sequence.
+Do not silently advance to new capabilities without discussing
+their scope and security implications.
 
-The remaining open context-policy question is whether the MCP adapter
-should use a smaller default context budget than the general Application
-default. This has not been decided.
+Preserve the distinction between:
 
-### Completed Milestones: AI Project References and Repository Read Ranges
+- Read-only project inspection.
+- Repository intelligence.
+- Controlled execution.
+- Project-specific intelligence.
 
-AI project references are implemented and verified through a real MCP
-client. MCP tools that operate on a registered project accept either the
-authoritative GUID or the exact registered project name. Resolution is
-owned by `IRegisteredProjectResolver`. GUID-shaped input never falls back
-to name lookup, exact name matching is ordinal case-insensitive, and
-duplicate names are rejected as ambiguous.
-
-Repository read ranges are also implemented and verified. `repo_read`
-retains its existing bounded whole-file behavior and additionally accepts
-`startLine` plus `lineCount` for targeted line-oriented reads. Both range
-parameters must be supplied together. Repository policy enforces positive
-line values and a maximum `lineCount` of 500.
-
-The MCP response uses one stable schema with an explicit mode:
-
-```text
-file   → Truncated is populated; StartLine and EndLine are null
-range  → Truncated is null; StartLine is populated; EndLine is the actual
-         final returned line or null for an empty range
-```
-
-Real Copilot CLI dogfooding demonstrated the intended cross-project flow
-without first calling `projects`:
-
-```text
-repo_search(project: "DeadRoute", query: "EditorPanel")
-→ targeted repo_read(project: "DeadRoute", ..., startLine: 1185, lineCount: 60)
-→ lines 1185–1244
-```
-
-The session used 1.16 AIC according to Copilot CLI. Treat this as a
-dogfooding observation and an initial efficiency baseline, not as
-provider-neutral billing telemetry.
-
-Further Copilot CLI dogfooding exercised the complete intended investigation
-workflow against `WayFinder.DevTools`:
-
-```text
-context(project: "WayFinder.DevTools", task: ...)
-→ targeted repo_search for missing evidence
-→ repo_read for identified implementation files
-→ further exact-symbol searches and reads as dependencies were discovered
-```
-
-The investigation correctly traced technology detection through the generic
-detector contracts, `TechnologySignatureDetector`,
-`JsonTechnologySignatureProvider`, the embedded `technologies.json` catalog,
-composition, project inspection, and the project filesystem. This demonstrated
-that the current generic read-only primitives can support a realistic source
-investigation without project-specific retrieval rules.
-
-MCP tool descriptions should communicate their intended roles: `projects` is
-for discovering or confirming registered project identifiers when needed;
-`context` is the preferred starting point for broad development-task
-investigation; `repo_search` is a targeted literal follow-up search; and
-`repo_read` is targeted source inspection, with bounded line ranges preferred
-when only part of a file is needed. `projects` is not a prerequisite when an
-exact registered project name or GUID is already known.
-
-The current retrieval/ranking behavior is sufficient for this milestone. Do
-not add stemming, synonym expansion, embeddings, provider-specific heuristics,
-or further scoring complexity without new evidence of a durable problem.
-Dogfooding should continue to distinguish WayFinder defects from individual
-client/model tool-selection behavior.
-
-Cross-client validation with additional MCP clients such as Claude remains a
-future validation item and is not a prerequisite for closing this milestone.
-
-Do not add a separate byte/character ceiling to ranged reads solely for
-the theoretical case of extremely long individual lines. Revisit that
-policy if dogfooding demonstrates a real output-size problem.
-
-The next milestone should be selected from evidence gathered through
-further dogfooding and discussion. Do not silently advance to controlled
-execution or project-specific intelligence.
+Future execution or mutation capabilities require explicit
+authorization and must not inherit permissions from project
+registration.
 
 ---
 
