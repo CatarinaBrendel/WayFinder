@@ -19,6 +19,8 @@ internal sealed class ConsoleSpinner : IDisposable
         "Searching for the plot..."
     ];
 
+    private const string Indent = "    ";
+
     private readonly CancellationTokenSource _cancellation = new();
     private readonly Task _animation;
     private readonly string _message;
@@ -78,7 +80,7 @@ internal sealed class ConsoleSpinner : IDisposable
             while (!_cancellation.IsCancellationRequested)
             {
                 Console.Error.Write(
-                    $"\r{Frames[index]} {_message}"
+                    $"\r{Indent}{Frames[index]} {_message}"
                 );
 
                 index = (index + 1) % Frames.Length;
@@ -99,7 +101,7 @@ internal sealed class ConsoleSpinner : IDisposable
     private void ClearLine()
     {
         Console.Error.Write(
-            $"\r{new string(' ', _message.Length + 3)}\r"
+            $"\r{Indent}{new string(' ', _message.Length + 3)}\r"
         );
     }
 }

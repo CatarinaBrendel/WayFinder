@@ -445,6 +445,38 @@ public sealed class ContextCandidateDiscoveryTests
         );
     }
 
+    [Fact]
+    public void Discover_MatchesCompleteFileName()
+    {
+        WriteFile(
+            "src/ContextInteractiveCommand.cs",
+            "public sealed class Example { }"
+        );
+
+        var result =
+            _discovery.Discover(
+                _project,
+                ["ContextInteractiveCommand"]
+            );
+
+        var candidate =
+            Assert.Single(result);
+
+        Assert.Equal(
+            "src/ContextInteractiveCommand.cs",
+            candidate.Path
+        );
+
+        Assert.Equal(
+            ["ContextInteractiveCommand"],
+            candidate.PathMatchedTerms
+        );
+
+        Assert.Empty(
+            candidate.ContentMatchedTerms
+        );
+    }
+
     public void Dispose()
     {
         if (Directory.Exists(

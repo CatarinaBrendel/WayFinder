@@ -71,11 +71,6 @@ internal sealed class ContextCandidateRanker
             return false;
         }
 
-        if (candidate.Candidate.ContentMatchedTerms.Count == 0)
-        {
-            return false;
-        }
-
         if (anchorTerms.Count == 0)
         {
             return true;

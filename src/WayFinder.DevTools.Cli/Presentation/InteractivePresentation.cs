@@ -1,130 +1,133 @@
 using WayFinder.DevTools.Application.Conversations;
+using WayFinder.DevTools.Application.Diagnostics;
+using WayFinder.DevTools.Cli.Interactive;
 
 namespace WayFinder.DevTools.Cli.Presentation;
 
 internal static class InteractivePresentation
 {
+    private static readonly string[] GoodbyeMessages =
+    [
+        "The rubber duck approves.",
+        "May your builds stay green.",
+        "No semicolons were harmed.",
+        "The bugs can wait until tomorrow.",
+        "Your coffee deserves a refill.",
+        "Remember to commit your changes.",
+        "Keep your stack traces short.",
+        "The compiler will miss you.",
+        "Zero additional technical debt. Probably.",
+        "The silicon oracle needs a nap.",
+        "May your merge conflicts be trivial.",
+        "Stay curious, ship carefully."
+    ];
+
     public static void WriteHeader(
         TextWriter output,
         string? provider = null)
     {
-        {
-            output.WriteLine();
-            output.WriteLine(
-                $"  {ConsoleTheme.Rule}"
-            );
+        ConsolePresenter.Header(output, "Interactive session");
 
-            output.WriteLine();
-
-            output.WriteLine(
-                $"  {ConsoleTheme.Waypoint}  " +
-                ConsoleTheme.Bold("Interactive session")
-            );
-
-            output.WriteLine();
-
-            WriteProperty(
-                output,
-                "Workspace",
-                Environment.CurrentDirectory
-            );
-
-            WriteProperty(
-                output,
-                "Provider",
-                provider ?? "Not configured"
-            );
-
-            WriteProperty(
-                output,
-                "Status",
-                ConsoleTheme.Success("Ready")
-            );
-
-            output.WriteLine();
-
-            output.WriteLine(
-                $"  {ConsoleTheme.Secondary("Type /help for available commands.")}"
-            );
-
-            output.WriteLine();
-        }
-    }
-
-    public static void WritePrompt(
-        TextWriter output)
-    {
-        output.Write(
-            $"  {ConsoleTheme.Waypoint} wayfinder " +
-            $"{ConsoleTheme.Secondary("›")} "
+        ConsolePresenter.Property(
+            output,
+            "Workspace",
+            Environment.CurrentDirectory
         );
 
-        output.Flush();
-    }
-
-    public static void WriteHelp(
-        TextWriter output)
-    {
-        WriteSection(
+        ConsolePresenter.Property(
             output,
-            "Available commands"
+            "Provider",
+            provider ?? "Not configured"
         );
 
-        WriteCommand(
+        ConsolePresenter.Property(
             output,
-            "/help",
-            "Show available commands"
-        );
-
-        WriteCommand(
-            output,
-            "/status",
-            "Show session information"
-        );
-
-        WriteCommand(
-            output,
-            "/clear",
-            "Clear the screen"
-        );
-
-        WriteCommand(
-            output,
-            "/exit",
-            "Exit WayFinder"
+            "Status",
+            provider is not null
+                ? ConsoleTheme.Success("Ready")
+                : ConsoleTheme.Warning("Local mode")
         );
 
         output.WriteLine();
+
+        if (provider is not null)
+        {
+            ConsolePresenter.Text(
+                output,
+                $"{ConsoleTheme.AiMark} " +
+                "Ask your AI assistant anything about your project."
+            );
+
+            ConsolePresenter.Text(
+                output,
+                ConsoleTheme.Secondary(
+                    "Type /help to explore available commands."
+                )
+            );
+        }
+        else
+        {
+            ConsolePresenter.Text(
+                output,
+                ConsoleTheme.Secondary(
+                    "AI assistant unavailable. Running in local mode."
+                )
+            );
+
+            ConsolePresenter.Text(
+                output,
+                ConsoleTheme.Secondary(
+                    "Type /help to explore available commands."
+                )
+            );
+        }
+    }
+
+    public static void WritePrompt(TextWriter output)
+    {
+        ConsolePresenter.Prompt(output);
+    }
+    public static void WriteHelp(
+        TextWriter output,
+        IEnumerable<IInteractiveCommand> commands)
+    {
+        ConsolePresenter.Header(output, "Available commands");
+
+        foreach (var command in commands.OrderBy(c => c.Name))
+        {
+            ConsolePresenter.Command(
+                output,
+                command.Name,
+                command.Description
+            );
+        }
     }
 
     public static void WriteStatus(
         TextWriter output,
         string? provider = null)
     {
-        WriteSection(
-            output,
-            "Session status"
-        );
+        ConsolePresenter.Header(output, "Session status");
 
-        WriteProperty(
+        ConsolePresenter.Property(
             output,
             "Workspace",
             Environment.CurrentDirectory
         );
 
-        WriteProperty(
+        ConsolePresenter.Property(
             output,
             "Provider",
             provider ?? "Not configured"
         );
 
-        WriteProperty(
+        ConsolePresenter.Property(
             output,
             "Status",
-            ConsoleTheme.Success("Ready")
+            provider is not null
+                ? ConsoleTheme.Success("Ready")
+                : ConsoleTheme.Warning("Local mode")
         );
-
-        output.WriteLine();
     }
 
     public static void WriteMissingProvider(
@@ -146,50 +149,24 @@ internal static class InteractivePresentation
         output.WriteLine();
     }
 
-    public static void WriteGoodbye(
-        TextWriter output)
+    public static void WriteGoodbye(TextWriter output)
     {
+        var message = GoodbyeMessages[
+            Random.Shared.Next(GoodbyeMessages.Length)
+        ];
+
         output.WriteLine();
 
         output.WriteLine(
-            $"  {ConsoleTheme.SuccessMark} Session ended."
+            $"  {ConsoleTheme.Waypoint} " +
+            ConsoleTheme.Bold("Session ended.")
+        );
+
+        output.WriteLine(
+            $"    {ConsoleTheme.Secondary(message)}"
         );
 
         output.WriteLine();
-    }
-
-    private static void WriteSection(
-        TextWriter output,
-        string title)
-    {
-        output.WriteLine();
-
-        output.WriteLine(
-            $"  {ConsoleTheme.Waypoint}  " +
-            ConsoleTheme.Bold(title)
-        );
-
-        output.WriteLine();
-    }
-
-    private static void WriteProperty(
-        TextWriter output,
-        string name,
-        string value)
-    {
-        output.WriteLine(
-            $"     {ConsoleTheme.Secondary(name.PadRight(12))}{value}"
-        );
-    }
-
-    private static void WriteCommand(
-        TextWriter output,
-        string command,
-        string description)
-    {
-        output.WriteLine(
-            $"    {ConsoleTheme.Accent(command.PadRight(12))}{description}"
-        );
     }
 
     public static void WriteResponse(
@@ -199,7 +176,7 @@ internal static class InteractivePresentation
         output.WriteLine();
 
         output.WriteLine(
-            $"  {ConsoleTheme.Waypoint} " +
+            $"  {ConsoleTheme.AiMark} " +
             ConsoleTheme.Bold("Copilot")
         );
 
@@ -235,7 +212,7 @@ internal static class InteractivePresentation
 
         output.WriteLine(
             ConsoleTheme.Secondary(
-                $"  {ConsoleTheme.Waypoint} {model} · " +
+                $"  {ConsoleTheme.MetricsMark} {model} · " +
                 $"{input:N0} in · " +
                 $"{outputTokens:N0} out · " +
                 $"{cachePercentage:0.0}% cached" +
@@ -244,5 +221,59 @@ internal static class InteractivePresentation
         );
 
         output.WriteLine();
+    }
+
+    public static void WriteDoctorReport(
+        TextWriter output,
+        DoctorReport report)
+    {
+        ConsolePresenter.Header(
+            output,
+            "Environment diagnostics"
+        );
+
+        foreach (var check in report.Checks)
+        {
+            switch (check.Status)
+            {
+                case DoctorCheckStatus.Ok:
+                    ConsolePresenter.Success(output, check.Message);
+                    break;
+
+                case DoctorCheckStatus.Warning:
+                    ConsolePresenter.Warning(output, check.Message);
+                    break;
+
+                case DoctorCheckStatus.Error:
+                    ConsolePresenter.Error(output, check.Message);
+                    break;
+
+                default:
+                    ConsolePresenter.Info(output, check.Message);
+                    break;
+            }
+        }
+
+        ConsolePresenter.Section(output, "Summary");
+
+        ConsolePresenter.Property(
+            output,
+            "Healthy",
+            report.Checks.Count(
+                check => check.Status == DoctorCheckStatus.Ok
+            ).ToString()
+        );
+
+        ConsolePresenter.Property(
+            output,
+            "Warnings",
+            report.WarningCount.ToString()
+        );
+
+        ConsolePresenter.Property(
+            output,
+            "Errors",
+            report.ErrorCount.ToString()
+        );
     }
 }

@@ -85,10 +85,10 @@ public sealed class ContextCompiler
         }
 
         var terms =
-            _termExtractor.Extract(
-                request.Task,
-                project.Name
-            );
+        _termExtractor.Extract(
+            request.Task,
+            project.Name
+        );
 
         var candidates =
             _candidateDiscovery.Discover(

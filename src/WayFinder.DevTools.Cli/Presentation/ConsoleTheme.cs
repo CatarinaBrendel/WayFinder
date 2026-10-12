@@ -2,6 +2,8 @@ namespace WayFinder.DevTools.Cli.Presentation;
 
 internal static class ConsoleTheme
 {
+    public const string AiMark = "✦";
+    public const string MetricsMark = "◦";
     private const string Reset = "\e[0m";
     private const string BoldCode = "\e[1m";
     private const string Green = "\e[32m";

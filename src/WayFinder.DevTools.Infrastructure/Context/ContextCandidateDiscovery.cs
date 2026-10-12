@@ -78,9 +78,20 @@ internal sealed class ContextCandidateDiscovery
 
             foreach (var term in terms)
             {
-                if (!components.Contains(
+                var matchesFileName =
+                    string.Equals(
+                        fileName,
                         term,
-                        StringComparer.OrdinalIgnoreCase))
+                        StringComparison.OrdinalIgnoreCase
+                    );
+
+                var matchesComponent =
+                    components.Contains(
+                        term,
+                        StringComparer.OrdinalIgnoreCase
+                    );
+
+                if (!matchesFileName && !matchesComponent)
                 {
                     continue;
                 }

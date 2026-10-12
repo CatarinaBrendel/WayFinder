@@ -200,7 +200,7 @@ public sealed class ContextCandidateRankerTests
     }
 
     [Fact]
-    public void Rank_ExcludesFilenameOnlyMatch()
+    public void Rank_IncludesFilenameOnlyMatch()
     {
         var candidate =
             Candidate(
@@ -214,8 +214,17 @@ public sealed class ContextCandidateRankerTests
                 [candidate]
             );
 
-        Assert.Empty(
-            result
+        var ranked =
+            Assert.Single(result);
+
+        Assert.Equal(
+            "src/ProjectFile.cs",
+            ranked.Candidate.Path
+        );
+
+        Assert.Equal(
+            70,
+            ranked.Score
         );
     }
 

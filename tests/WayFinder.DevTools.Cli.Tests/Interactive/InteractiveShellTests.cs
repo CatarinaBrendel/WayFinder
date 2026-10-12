@@ -158,6 +158,35 @@ public sealed class InteractiveShellTests
         Assert.Equal(4, session.Messages.Count);
     }
 
+    [Fact]
+    public async Task RunAsync_RecognizesCommandWithArguments()
+    {
+        using var input = new StringReader(
+            "/help extra\n/exit\n"
+        );
+
+        using var output = new StringWriter();
+
+        var shell = new InteractiveShell(
+            input,
+            output
+        );
+
+        var result = await shell.RunAsync();
+
+        Assert.Equal(0, result);
+
+        Assert.Contains(
+            "/help",
+            output.ToString()
+        );
+
+        Assert.DoesNotContain(
+            "Unknown command",
+            output.ToString()
+        );
+    }
+
     private sealed class FakeAiProvider : IAiProvider
     {
         private int _requestCount;

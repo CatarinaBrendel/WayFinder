@@ -400,6 +400,17 @@ public sealed class RepositoryFileReaderTests : IDisposable
         );
     }
 
+    [Fact]
+    public void Read_WithPathTraversal_RejectsAccess()
+    {
+        Assert.Throws<UnauthorizedAccessException>(
+            () => _reader.Read(
+                _project,
+                "../outside.txt"
+            )
+        );
+    }
+
     public void Dispose()
     {
         if (Directory.Exists(_root))

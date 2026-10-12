@@ -44,7 +44,7 @@ rootCommand.Add(
 );
 
 rootCommand.Add(
-    InteractiveCommand.Create()
+    InteractiveCommand.Create(services)
 );
 
 if (args.Length == 0

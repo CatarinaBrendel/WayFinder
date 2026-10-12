@@ -75,6 +75,7 @@ internal static class CompletionCommand
         var completionDirectory =
             Path.Combine(
                 services.Environment.HomePath,
+                ".wayfinder",
                 "completions"
             );
 
@@ -102,46 +103,47 @@ internal static class CompletionCommand
             or UnauthorizedAccessException
         )
         {
-            Console.Error.WriteLine(
-                $"{ConsoleTheme.ErrorMark} Could not install completion: {exception.Message}"
+            ConsolePresenter.Error(
+                Console.Error,
+                $"Could not install completion: {exception.Message}"
             );
 
             return ExitCodes.Failure;
         }
 
-        Console.WriteLine(
-            $"{ConsoleTheme.Waypoint} {ConsoleTheme.Bold("Shell completion")}"
+        ConsolePresenter.Header(
+            Console.Out,
+            "Shell completion"
         );
 
-        Console.WriteLine(
-            ConsoleTheme.Rule
+        ConsolePresenter.Success(
+            Console.Out,
+            "Installed zsh completion"
         );
 
-        Console.WriteLine();
-
-        Console.WriteLine(
-            $"{ConsoleTheme.SuccessMark} Installed zsh completion"
+        ConsolePresenter.Property(
+            Console.Out,
+            "Location",
+            completionPath
         );
 
-        Console.WriteLine(
-            $"  {completionPath}"
+        ConsolePresenter.Subsection(
+            Console.Out,
+            "Setup"
         );
 
-        Console.WriteLine();
-
-        Console.WriteLine(
+        ConsolePresenter.Text(
+            Console.Out,
             "Add this to ~/.zshrc before compinit:"
         );
 
-        Console.WriteLine();
-
-        Console.WriteLine(
-            "  fpath=(~/.wayfinder/completions $fpath)"
+        ConsolePresenter.Text(
+            Console.Out,
+            "fpath=(~/.wayfinder/completions $fpath)"
         );
 
-        Console.WriteLine();
-
-        Console.WriteLine(
+        ConsolePresenter.Text(
+            Console.Out,
             "Then restart your shell."
         );
 
@@ -157,9 +159,13 @@ internal static class CompletionCommand
             local -a commands
 
             commands=(
+                'interactive:Start an interactive WayFinder session'
                 'project:Manage WayFinder projects'
                 'repo:Inspect repository content'
                 'doctor:Check the health of your WayFinder setup'
+                'git:Inspect Git repository state'
+                'tree:Display project structure'
+                'context:Compile task-relevant context'
                 'completion:Manage shell completion'
             )
 
