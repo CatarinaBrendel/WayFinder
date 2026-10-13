@@ -230,22 +230,109 @@ public sealed class InteractiveShell
             try
             {
                 ConversationResponse response;
+                var hasStreamedAnswer = false;
 
-                using (var spinner =
+                var toolNames = new Dictionary<string, string>();
+                var toolStatuses = new Dictionary<string, string>();
+
+                ConsoleSpinner? spinner =
                     ReferenceEquals(_output, Console.Out)
                         ? ConsoleSpinner.StartRandom()
-                        : null)
+                        : null;
+
+                try
                 {
-                    response = await _session.SendAsync(
+                    response = await _session.SendStreamingAsync(
                         command,
+                        streamEvent =>
+                        {
+                            switch (streamEvent.Type)
+                            {
+                                case ConversationStreamEventType.Answer:
+                                    {
+                                        if (!hasStreamedAnswer)
+                                        {
+                                            spinner?.Dispose();
+                                            spinner = null;
+
+                                            InteractivePresentation.WriteStreamingHeader(_output);
+                                            hasStreamedAnswer = true;
+                                        }
+
+                                        InteractivePresentation.WriteStreamingChunk(
+                                            _output,
+                                            streamEvent.Content
+                                        );
+
+                                        break;
+                                    }
+
+                                case ConversationStreamEventType.ToolStarted:
+                                case ConversationStreamEventType.ToolUpdated:
+                                    {
+                                        var tool = streamEvent.Tool;
+
+                                        if (tool is null || string.IsNullOrWhiteSpace(tool.Id))
+                                            break;
+
+                                        if (!string.IsNullOrWhiteSpace(tool.Name))
+                                            toolNames[tool.Id] = tool.Name;
+
+                                        if (!toolNames.TryGetValue(tool.Id, out var name))
+                                            name = "MCP tool";
+
+                                        var status = string.IsNullOrWhiteSpace(tool.Status)
+                                            ? "pending"
+                                            : tool.Status;
+
+                                        if (toolStatuses.TryGetValue(tool.Id, out var previous) &&
+                                            previous == status)
+                                        {
+                                            break;
+                                        }
+
+                                        toolStatuses[tool.Id] = status;
+
+                                        spinner?.Dispose();
+                                        spinner = null;
+
+                                        if (hasStreamedAnswer)
+                                        {
+                                            InteractivePresentation.EndStreamingLine(_output);
+                                        }
+
+                                        InteractivePresentation.WriteToolEvent(
+                                            _output,
+                                            name,
+                                            status
+                                        );
+
+                                        break;
+                                    }
+                            }
+                        },
                         cancellationToken
                     );
                 }
+                finally
+                {
+                    spinner?.Dispose();
+                }
 
-                InteractivePresentation.WriteResponse(
-                    _output,
-                    response
-                );
+                if (hasStreamedAnswer)
+                {
+                    InteractivePresentation.WriteStreamingFooter(
+                        _output,
+                        response
+                    );
+                }
+                else
+                {
+                    InteractivePresentation.WriteResponse(
+                        _output,
+                        response
+                    );
+                }
             }
             catch (OperationCanceledException)
             {
@@ -257,8 +344,6 @@ public sealed class InteractiveShell
                     $"Error: {ex.Message}"
                 );
             }
-
-
         }
 
         return 0;

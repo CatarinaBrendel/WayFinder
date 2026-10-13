@@ -4,6 +4,25 @@ Notable completed changes to WayFinder.DevTools are recorded here. Entries are g
 
 ## Unreleased
 
+### Interactive CLI and AI conversations (implemented; milestone number not assigned)
+
+**Added**
+- `wayfinder interactive` session with direct natural-language conversations through a configured GitHub Copilot conversation session; slash commands remain local.
+- Interactive commands for help, status, clear, exit/quit, diagnostics, project management, repository reading/search, Git inspection, tree view, and context compilation (subject to service availability).
+- Tab completion for command names, subcommands, subcommand options, and direct options; completion suggestions and used-option filtering.
+- AI response presentation with distinct AI and model-usage markers, input/output token counts, cache percentage, and elapsed time when supplied by the provider.
+
+**Terminal experience**
+- Provider-aware welcome hint and `Ready`/`Local mode` startup and status presentation.
+- Consistent prompt spacing, indented animated thinking spinner, and separate presentation markers for WayFinder, AI replies, and metrics.
+- Blinking bar cursor requested for the interactive terminal session, with terminal-default restoration on normal exit.
+- Randomized developer-themed goodbye messages, with a stable `Session ended.` heading and a single exit presentation.
+
+**Verification**
+- Build and tests were reported green during completion development.
+- A subsequent run reported 415 passed and one failure because an existing test asserted `Session ended.` after the goodbye wording changed. The presentation was adjusted to retain that stable heading; a final full-suite result has not been supplied.
+
+
 ### Milestone 16 — Git integration hardening (completed)
 
 **Added**

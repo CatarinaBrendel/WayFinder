@@ -3,52 +3,75 @@ namespace WayFinder.DevTools.Application.Conversations;
 public sealed class ConversationSession
 {
     private readonly IAiProvider _provider;
-
     private readonly List<ConversationMessage> _messages = [];
 
     public string ProviderId => _provider.Id;
 
+    public IReadOnlyList<ConversationMessage> Messages => _messages.AsReadOnly();
+
     public ConversationSession(IAiProvider provider)
     {
-        _provider = provider
-            ?? throw new ArgumentNullException(nameof(provider));
+        _provider = provider ?? throw new ArgumentNullException(nameof(provider));
     }
 
-    public IReadOnlyList<ConversationMessage> Messages =>
-        _messages.AsReadOnly();
-
-    public async Task<ConversationResponse> SendAsync(
-        string content,
+    public Task<ConversationResponse> SendAsync(
+        string message,
         CancellationToken cancellationToken = default)
     {
-        if (string.IsNullOrWhiteSpace(content))
+        return SendCoreAsync(message, null, cancellationToken);
+    }
+
+    public Task<ConversationResponse> SendStreamingAsync(
+        string message,
+        Action<ConversationStreamEvent> onEvent,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(onEvent);
+
+        return SendCoreAsync(message, onEvent, cancellationToken);
+    }
+
+    private async Task<ConversationResponse> SendCoreAsync(
+        string message,
+        Action<ConversationStreamEvent>? onEvent,
+        CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrWhiteSpace(message))
         {
             throw new ArgumentException(
-                "Message content cannot be empty.",
-                nameof(content));
+                "Message cannot be empty.",
+                nameof(message));
         }
-
-        cancellationToken.ThrowIfCancellationRequested();
 
         var userMessage = new ConversationMessage(
             ConversationRole.User,
-            content);
+            message);
 
-        var requestMessages = new List<ConversationMessage>(
-            _messages.Count + 1);
+        var messages = new List<ConversationMessage>(_messages)
+        {
+            userMessage
+        };
 
-        requestMessages.AddRange(_messages);
-        requestMessages.Add(userMessage);
+        var request = new ConversationRequest(messages);
 
-        var request = new ConversationRequest(
-            requestMessages.AsReadOnly());
+        ConversationResponse response;
 
-        var response = await _provider.CompleteAsync(
-            request,
-            cancellationToken);
+        if (onEvent is not null &&
+            _provider is IStreamingAiProvider streamingProvider)
+        {
+            response = await streamingProvider.CompleteStreamingAsync(
+                request,
+                onEvent,
+                cancellationToken);
+        }
+        else
+        {
+            response = await _provider.CompleteAsync(
+                request,
+                cancellationToken);
+        }
 
-        cancellationToken.ThrowIfCancellationRequested();
-
+        // Only commit messages after successful completion.
         _messages.Add(userMessage);
 
         _messages.Add(new ConversationMessage(

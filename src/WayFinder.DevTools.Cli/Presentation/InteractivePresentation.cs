@@ -22,6 +22,8 @@ internal static class InteractivePresentation
         "Stay curious, ship carefully."
     ];
 
+    private static bool _streamingAtLineStart;
+
     public static void WriteHeader(
         TextWriter output,
         string? provider = null)
@@ -170,57 +172,20 @@ internal static class InteractivePresentation
     }
 
     public static void WriteResponse(
-        TextWriter output,
+    TextWriter output,
         ConversationResponse response)
     {
-        output.WriteLine();
+        WriteStreamingHeader(output);
 
-        output.WriteLine(
-            $"  {ConsoleTheme.AiMark} " +
-            ConsoleTheme.Bold("Copilot")
+        WriteStreamingChunk(
+            output,
+            response.Content
         );
 
-        output.WriteLine();
-
-        foreach (var line in response.Content.Split('\n'))
-        {
-            output.WriteLine(
-                $"    {line.TrimEnd('\r')}"
-            );
-        }
-
-        if (response.InputTokens is not int input ||
-            response.OutputTokens is not int outputTokens)
-        {
-            output.WriteLine();
-            return;
-        }
-
-        var model = response.Model ?? "Unknown model";
-
-        var cached = response.CachedInputTokens ?? 0;
-
-        var cachePercentage = input > 0
-            ? cached * 100.0 / input
-            : 0;
-
-        var duration = response.DurationMs.HasValue
-            ? $" · {response.DurationMs.Value / 1000:0.0}s"
-            : "";
-
-        output.WriteLine();
-
-        output.WriteLine(
-            ConsoleTheme.Secondary(
-                $"  {ConsoleTheme.MetricsMark} {model} · " +
-                $"{input:N0} in · " +
-                $"{outputTokens:N0} out · " +
-                $"{cachePercentage:0.0}% cached" +
-                duration
-            )
+        WriteStreamingFooter(
+            output,
+            response
         );
-
-        output.WriteLine();
     }
 
     public static void WriteDoctorReport(
@@ -275,5 +240,145 @@ internal static class InteractivePresentation
             "Errors",
             report.ErrorCount.ToString()
         );
+    }
+
+    public static void WriteResponseMetrics(
+        TextWriter output,
+        ConversationResponse response)
+    {
+        var model = response.Model ?? "Unknown model";
+
+        var metrics = model;
+
+        if (response.InputTokens is int input &&
+            response.OutputTokens is int outputTokens)
+        {
+            var cached = response.CachedInputTokens ?? 0;
+
+            var cachePercentage = input > 0
+                ? cached * 100.0 / input
+                : 0;
+
+            metrics +=
+                $" · {input:N0} in" +
+                $" · {outputTokens:N0} out" +
+                $" · {cachePercentage:0.0}% cached";
+        }
+
+        if (response.DurationMs is double duration)
+        {
+            metrics += $" · {duration / 1000:0.0}s";
+        }
+
+        output.WriteLine(
+            ConsoleTheme.Secondary(
+                $"  ╰─ {ConsoleTheme.MetricsMark} {metrics}"
+            )
+        );
+    }
+
+    public static void WriteStreamingHeader(TextWriter output)
+    {
+        output.WriteLine();
+
+        output.WriteLine(
+            $"  {ConsoleTheme.AiMark} " +
+            ConsoleTheme.Bold("Copilot")
+        );
+
+        output.WriteLine(
+            ConsoleTheme.Secondary("  │")
+        );
+
+        _streamingAtLineStart = true;
+    }
+
+    public static void WriteStreamingChunk(
+        TextWriter output,
+        string content)
+    {
+        foreach (var character in content)
+        {
+            if (_streamingAtLineStart)
+            {
+                output.Write(
+                    ConsoleTheme.Secondary("  │  ")
+                );
+
+                _streamingAtLineStart = false;
+            }
+
+            if (character == '\n')
+            {
+                output.WriteLine();
+                _streamingAtLineStart = true;
+            }
+            else if (character != '\r')
+            {
+                output.Write(character);
+            }
+        }
+
+        output.Flush();
+    }
+
+    public static void WriteStreamingFooter(
+        TextWriter output,
+        ConversationResponse response)
+    {
+        if (!_streamingAtLineStart)
+        {
+            output.WriteLine();
+        }
+
+        output.WriteLine(
+            ConsoleTheme.Secondary("  │")
+        );
+
+        WriteResponseMetrics(output, response);
+
+        _streamingAtLineStart = false;
+    }
+
+    public static void WriteToolEvent(
+        TextWriter output,
+        string name,
+        string status)
+    {
+        var symbol = status switch
+        {
+            "completed" => ConsoleTheme.SuccessMark,
+            "failed" => ConsoleTheme.ErrorMark,
+            _ => ConsoleTheme.Secondary("◌")
+        };
+
+        var description = status switch
+        {
+            "completed" => $"{name} completed",
+            "failed" => $"{name} failed",
+            _ => name
+        };
+
+        output.WriteLine(
+            $"{ConsoleTheme.Secondary("  ├─")} " +
+            $"{symbol} " +
+            $"{ConsoleTheme.Secondary(description)}"
+        );
+
+        output.Flush();
+    }
+
+    public static void BeginStreamingLine()
+    {
+        _streamingAtLineStart = true;
+    }
+
+    public static void EndStreamingLine(TextWriter output)
+    {
+        if (!_streamingAtLineStart)
+        {
+            output.WriteLine();
+            _streamingAtLineStart = true;
+        }
     }
 }

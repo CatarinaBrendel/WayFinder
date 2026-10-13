@@ -75,7 +75,6 @@ internal static class CompletionCommand
         var completionDirectory =
             Path.Combine(
                 services.Environment.HomePath,
-                ".wayfinder",
                 "completions"
             );
 

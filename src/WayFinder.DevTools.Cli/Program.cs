@@ -47,6 +47,9 @@ rootCommand.Add(
     InteractiveCommand.Create(services)
 );
 
+rootCommand.Subcommands.Add(
+    AcpTestCommand.Create());
+
 if (args.Length == 0
     || (args.Length == 1
         && (args[0] == "--help"

@@ -6,9 +6,9 @@ This document tracks **future direction and milestone status**. Architectural in
 
 ## Current status
 
-- **Completed:** Git integration and hardening through Milestone 16.
+- **Completed:** Git integration and hardening through Milestone 16; subsequent interactive CLI and AI-conversation improvements (unreleased).
 - **Next:** Milestone 17 — Repository Intelligence (scope to be agreed before implementation).
-- **Verification baseline:** 342 passing tests at completion of Milestone 16.
+- **Verification baseline:** 342 passing tests at completion of Milestone 16; latest reported interactive CLI run: 415 passed / 1 failed before the goodbye assertion was corrected. A fresh full-suite result after the final changes has not been supplied.
 
 ## Delivered capabilities
 
@@ -22,6 +22,16 @@ This document tracks **future direction and milestone status**. Architectural in
 | Context compilation | Implemented | Deterministic, budgeted context packages. |
 | MCP adapter | Implemented | `projects`, `context`, `repo_search`, `repo_read`. |
 | Git inspection | Completed (Milestone 16) | `git_status`, `git_diff`, `git_log`; read-only command allowlist and bounded subprocess execution. |
+| Interactive CLI | Implemented (unreleased) | `wayfinder interactive`; local slash commands, AI conversation through a configured Copilot session, command/subcommand/option completion, terminal presentation and usage metrics. |
+
+## Interactive CLI — delivered in the current iteration
+
+- Natural-language input is forwarded to the configured conversation session; slash commands are handled locally and unknown slash commands are not forwarded to AI.
+- Local commands: `/help`, `/status`, `/clear`, `/exit`, `/quit`, `/doctor`, `/project`, `/repo`, `/git`, `/tree`, and `/context` (service-backed commands depend on available services).
+- Interactive Tab completion supports command names, subcommands, direct options, and subcommand options, with used-option filtering.
+- The shell displays provider-aware startup guidance and distinguishes `Ready` from `Local mode`; AI responses have a distinct marker, model/token metrics, a spinner, and a session-scoped cursor style.
+- Exit/quit display one goodbye message with a randomized developer-themed sign-off.
+- **Follow-up:** Validate the complete test suite after the goodbye-output regression fix; do not treat a configured provider as a verified connectivity check.
 
 ## Milestone 17 — Repository Intelligence
 
