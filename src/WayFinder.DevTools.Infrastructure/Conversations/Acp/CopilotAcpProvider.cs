@@ -15,6 +15,11 @@ public sealed class CopilotAcpProvider : IStreamingAiProvider, IAsyncDisposable
     private bool _initialized;
     private bool _disposed;
     private bool _sessionInvalidated;
+    public Func<AcpPermissionRequest, Task<AcpPermissionDecision>>? PermissionRequested
+    {
+        get => _client.PermissionRequested;
+        set => _client.PermissionRequested = value;
+    }
 
     public string Id => "copilot";
 

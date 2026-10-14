@@ -23,6 +23,8 @@ internal static class InteractivePresentation
     ];
 
     private static bool _streamingAtLineStart;
+    private static int _streamingColumn;
+    private const int StreamingPrefixWidth = 5;
 
     public static void WriteHeader(
         TextWriter output,
@@ -291,14 +293,34 @@ internal static class InteractivePresentation
         );
 
         _streamingAtLineStart = true;
+        _streamingColumn = 0;
     }
 
     public static void WriteStreamingChunk(
         TextWriter output,
         string content)
     {
+        var width = Console.IsOutputRedirected
+            ? int.MaxValue
+            : Math.Max(
+                StreamingPrefixWidth + 1,
+                Console.WindowWidth - 1);
+
         foreach (var character in content)
         {
+            if (character == '\r')
+                continue;
+
+            if (character == '\n')
+            {
+                output.WriteLine();
+
+                _streamingAtLineStart = true;
+                _streamingColumn = 0;
+
+                continue;
+            }
+
             if (_streamingAtLineStart)
             {
                 output.Write(
@@ -306,17 +328,23 @@ internal static class InteractivePresentation
                 );
 
                 _streamingAtLineStart = false;
+                _streamingColumn = StreamingPrefixWidth;
             }
 
-            if (character == '\n')
+            if (_streamingColumn >= width)
             {
                 output.WriteLine();
-                _streamingAtLineStart = true;
+
+                output.Write(
+                    ConsoleTheme.Secondary("  │  ")
+                );
+
+                _streamingColumn = StreamingPrefixWidth;
             }
-            else if (character != '\r')
-            {
-                output.Write(character);
-            }
+
+            output.Write(character);
+
+            _streamingColumn++;
         }
 
         output.Flush();
@@ -371,6 +399,7 @@ internal static class InteractivePresentation
     public static void BeginStreamingLine()
     {
         _streamingAtLineStart = true;
+        _streamingColumn = 0;
     }
 
     public static void EndStreamingLine(TextWriter output)
@@ -380,5 +409,75 @@ internal static class InteractivePresentation
             output.WriteLine();
             _streamingAtLineStart = true;
         }
+    }
+
+    public static void WritePermissionRequest(
+        TextWriter output,
+        string toolName,
+        string? arguments)
+    {
+        var branch = ConsoleTheme.Secondary("  │");
+
+        output.WriteLine(branch);
+
+        output.WriteLine(
+            $"{branch}  " +
+            $"{ConsoleTheme.WarningMark} " +
+            ConsoleTheme.Bold("Permission required")
+        );
+
+        output.WriteLine(branch);
+
+        output.WriteLine(
+            $"{branch}    " +
+            $"{ConsoleTheme.Secondary("Tool").PadRight(10)} {toolName}"
+        );
+
+        if (!string.IsNullOrWhiteSpace(arguments))
+        {
+            output.WriteLine(
+                $"{branch}    " +
+                $"{ConsoleTheme.Secondary("Arguments").PadRight(10)} {arguments}"
+            );
+        }
+
+        output.WriteLine(branch);
+
+        // Reserve one row below the confirmation prompt.
+        if (ReferenceEquals(output, Console.Out) &&
+            !Console.IsOutputRedirected)
+        {
+            output.WriteLine();
+            output.Flush();
+
+            Console.SetCursorPosition(
+                0,
+                Math.Max(0, Console.CursorTop - 1)
+            );
+        }
+
+        output.Write(
+            $"{branch}    " +
+            $"{ConsoleTheme.Success("[Y] Allow once")}  " +
+            $"{ConsoleTheme.Warning("[N] Deny")}  " +
+            $"{ConsoleTheme.Secondary("❯")} "
+        );
+
+        output.Flush();
+
+        output.Flush();
+    }
+
+    public static void WritePermissionDecision(
+        TextWriter output,
+        bool allowed)
+    {
+        output.WriteLine(
+            allowed
+                ? ConsoleTheme.Success("Allowed")
+                : ConsoleTheme.Warning("Denied")
+        );
+
+        output.Flush();
     }
 }

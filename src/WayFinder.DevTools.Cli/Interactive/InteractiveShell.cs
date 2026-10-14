@@ -2,6 +2,7 @@ using WayFinder.DevTools.Application.Conversations;
 using WayFinder.DevTools.Cli.Interactive.Commands;
 using WayFinder.DevTools.Cli.Presentation;
 using WayFinder.DevTools.Infrastructure.Composition;
+using WayFinder.DevTools.Infrastructure.Conversations.Acp;
 
 namespace WayFinder.DevTools.Cli.Interactive;
 
@@ -347,5 +348,36 @@ public sealed class InteractiveShell
         }
 
         return 0;
+    }
+
+    public async Task<AcpPermissionDecision> RequestPermissionAsync(
+        AcpPermissionRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        var arguments =
+            request.RawInput.ValueKind is
+                System.Text.Json.JsonValueKind.Undefined or
+                System.Text.Json.JsonValueKind.Null
+                ? null
+                : request.RawInput.GetRawText();
+
+        InteractivePresentation.WritePermissionRequest(
+            _output,
+            request.ToolName,
+            arguments
+        );
+
+        var allowed = await _lineEditor.ReadConfirmationAsync(
+            cancellationToken
+        );
+
+        InteractivePresentation.WritePermissionDecision(
+            _output,
+            allowed
+        );
+
+        return allowed
+            ? AcpPermissionDecision.AllowOnce
+            : AcpPermissionDecision.Deny;
     }
 }

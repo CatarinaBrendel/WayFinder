@@ -30,6 +30,23 @@ public static class InteractiveCommand
                 Console.Out,
                 session,
                 services);
+            using var permissionGate = new SemaphoreSlim(1, 1);
+
+            provider.PermissionRequested = async request =>
+            {
+                await permissionGate.WaitAsync(cancellationToken);
+
+                try
+                {
+                    return await shell.RequestPermissionAsync(
+                        request,
+                        cancellationToken);
+                }
+                finally
+                {
+                    permissionGate.Release();
+                }
+            };
 
             return await shell.RunAsync(cancellationToken);
         });

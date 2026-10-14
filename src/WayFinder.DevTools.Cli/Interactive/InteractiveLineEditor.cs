@@ -198,4 +198,38 @@ internal sealed class InteractiveLineEditor
 
         _output.Write(buffer.ToString());
     }
+
+    public async Task<bool> ReadConfirmationAsync(
+        CancellationToken cancellationToken = default)
+    {
+        if (!ReferenceEquals(_input, Console.In)
+            || !ReferenceEquals(_output, Console.Out)
+            || Console.IsInputRedirected
+            || Console.IsOutputRedirected)
+        {
+            var answer = await _input.ReadLineAsync(cancellationToken);
+
+            return string.Equals(
+                answer?.Trim(),
+                "y",
+                StringComparison.OrdinalIgnoreCase);
+        }
+
+        while (true)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+
+            var key = Console.ReadKey(intercept: true);
+
+            switch (key.Key)
+            {
+                case ConsoleKey.Y:
+                    return true;
+
+                case ConsoleKey.N:
+                case ConsoleKey.Escape:
+                    return false;
+            }
+        }
+    }
 }

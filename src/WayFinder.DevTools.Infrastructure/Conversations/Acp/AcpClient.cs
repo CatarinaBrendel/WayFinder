@@ -22,6 +22,7 @@ public sealed class AcpClient : IAsyncDisposable
     private bool _disposed;
 
     public event Action<JsonElement>? NotificationReceived;
+    public Func<AcpPermissionRequest, Task<AcpPermissionDecision>>? PermissionRequested { get; set; }
 
     public AcpClient()
     {
@@ -176,27 +177,32 @@ public sealed class AcpClient : IAsyncDisposable
                 {
                     if (message.TryGetProperty("id", out var incomingId))
                     {
-                        // Server-initiated JSON-RPC request.
-                        // Never approve tool permissions automatically.
-                        Console.Error.WriteLine(
-                            $"[ACP REQUEST] Method: {method.GetString()}");
-
-                        await WriteMessageAsync(
-                            new
-                            {
-                                jsonrpc = "2.0",
-                                id = incomingId,
-                                error = new
+                        if (method.GetString() == "session/request_permission")
+                        {
+                            // Do not block the ACP reader while waiting for user input.
+                            _ = HandlePermissionRequestAsync(
+                                message,
+                                cancellationToken);
+                        }
+                        else
+                        {
+                            // Reject unsupported server-initiated requests.
+                            await WriteMessageAsync(
+                                new
                                 {
-                                    code = -32601,
-                                    message = "Method not supported by WayFinder."
-                                }
-                            },
-                            cancellationToken);
+                                    jsonrpc = "2.0",
+                                    id = incomingId,
+                                    error = new
+                                    {
+                                        code = -32601,
+                                        message = "Method not supported by WayFinder."
+                                    }
+                                },
+                                cancellationToken);
+                        }
                     }
                     else
                     {
-                        // Server notification.
                         NotificationReceived?.Invoke(message);
                     }
 
@@ -327,5 +333,91 @@ public sealed class AcpClient : IAsyncDisposable
                 @params = parameters
             },
             cancellationToken);
+    }
+
+    private async Task HandlePermissionRequestAsync(
+    JsonElement message,
+    CancellationToken cancellationToken)
+    {
+        var requestId = message.GetProperty("id").Clone();
+
+        try
+        {
+            var parameters = message.GetProperty("params");
+            var toolCall = parameters.GetProperty("toolCall");
+
+            var request = new AcpPermissionRequest(
+                ToolCallId: toolCall.GetProperty("toolCallId").GetString()!,
+                ToolName: toolCall.GetProperty("title").GetString()!,
+                RawInput: toolCall.GetProperty("rawInput").Clone());
+
+            // Default deny when no interactive handler exists.
+            var decision = PermissionRequested is { } handler
+                ? await handler(request).WaitAsync(cancellationToken)
+                : AcpPermissionDecision.Deny;
+
+            // Only return an option explicitly offered by Copilot.
+            var requestedOption = decision == AcpPermissionDecision.AllowOnce
+                ? "allow_once"
+                : "reject_once";
+
+            var options = parameters.GetProperty("options");
+
+            var optionAvailable = options.EnumerateArray().Any(
+                option =>
+                    option.GetProperty("optionId").GetString() ==
+                    requestedOption);
+
+            if (!optionAvailable)
+            {
+                throw new InvalidOperationException(
+                    $"ACP permission option '{requestedOption}' was not offered.");
+            }
+
+            await WriteMessageAsync(
+                new
+                {
+                    jsonrpc = "2.0",
+                    id = requestId,
+                    result = new
+                    {
+                        outcome = new
+                        {
+                            outcome = "selected",
+                            optionId = requestedOption
+                        }
+                    }
+                },
+                cancellationToken);
+        }
+        catch (OperationCanceledException)
+            when (cancellationToken.IsCancellationRequested)
+        {
+            // The connection is shutting down.
+        }
+        catch (Exception)
+        {
+            // Never approve a permission request after a handler failure.
+            try
+            {
+                await WriteMessageAsync(
+                    new
+                    {
+                        jsonrpc = "2.0",
+                        id = requestId,
+                        error = new
+                        {
+                            code = -32603,
+                            message = "Permission request could not be processed."
+                        }
+                    },
+                    cancellationToken);
+            }
+            catch (OperationCanceledException)
+                when (cancellationToken.IsCancellationRequested)
+            {
+                // The connection is shutting down.
+            }
+        }
     }
 }
