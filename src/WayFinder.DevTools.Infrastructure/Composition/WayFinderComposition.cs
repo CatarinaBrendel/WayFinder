@@ -15,6 +15,10 @@ using WayFinder.DevTools.Infrastructure.Repositories.Reading;
 using WayFinder.DevTools.Infrastructure.Repositories.Searching;
 using WayFinder.DevTools.Application.Projects.Tree;
 using WayFinder.DevTools.Infrastructure.Repositories.Git;
+using WayFinder.DevTools.Infrastructure.Repositories.Discovery;
+using WayFinder.DevTools.Infrastructure.Repositories.Relationships;
+using WayFinder.DevTools.Infrastructure.Repositories.Symbols;
+using WayFinder.DevTools.Infrastructure.Repositories.Navigation;
 
 namespace WayFinder.DevTools.Infrastructure.Composition;
 
@@ -113,6 +117,24 @@ public static class WayFinderComposition
                 tokenEstimator
             );
 
+        var repositoryDiscoveryService =
+            new RepositoryDiscoveryService(
+                projectFileSystem
+            );
+
+        var repositoryRelationshipReader = new RepositoryRelationshipReader(
+            repositoryDiscoveryService,
+            projectFileSystem
+        );
+
+        var repositorySymbolReader = new RepositorySymbolReader(
+            projectFileSystem
+        );
+
+        var repositorySourceNavigator = new RepositorySourceNavigator(
+            projectFileSystem
+        );
+
         return new WayFinderServices(
             ProjectLocator: projectLocator,
             ProjectFileSystem: projectFileSystem,
@@ -124,6 +146,10 @@ public static class WayFinderComposition
             Environment: environment,
             RepositoryFileReader: repositoryFileReader,
             RepositorySearcher: repositorySearcher,
+            RepositoryDiscoveryService: repositoryDiscoveryService,
+            RepositoryRelationshipReader: repositoryRelationshipReader,
+            RepositorySymbolReader: repositorySymbolReader,
+            RepositorySourceNavigator: repositorySourceNavigator,
             Doctor: doctor,
             ContextCompiler: contextCompiler,
             RegisteredProjectResolver: registeredProjectResolver,

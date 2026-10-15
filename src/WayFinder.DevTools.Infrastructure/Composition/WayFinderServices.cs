@@ -12,6 +12,10 @@ using WayFinder.DevTools.Application.Repositories.Reading;
 using WayFinder.DevTools.Application.Repositories.Searching;
 using WayFinder.DevTools.Application.Projects.Tree;
 using WayFinder.DevTools.Application.Repositories.Git;
+using WayFinder.DevTools.Application.Repositories.Discovery;
+using WayFinder.DevTools.Application.Repositories.Relationships;
+using WayFinder.DevTools.Application.Repositories.Symbols;
+using WayFinder.DevTools.Application.Repositories.Navigation;
 
 namespace WayFinder.DevTools.Infrastructure.Composition;
 
@@ -26,6 +30,10 @@ public sealed record WayFinderServices(
     IProjectRegistry ProjectRegistry,
     IRepositoryFileReader RepositoryFileReader,
     IRepositorySearcher RepositorySearcher,
+    IRepositoryDiscoveryService RepositoryDiscoveryService,
+    IRepositoryRelationshipReader RepositoryRelationshipReader,
+    IRepositorySymbolReader RepositorySymbolReader,
+    IRepositorySourceNavigator RepositorySourceNavigator,
     IGitStatusReader GitStatusReader,
     IGitDiffReader GitDiffReader,
     IGitLogReader GitLogReader,

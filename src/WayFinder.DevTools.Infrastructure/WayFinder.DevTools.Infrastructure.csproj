@@ -6,4 +6,8 @@
     <InternalsVisibleTo Include="WayFinder.DevTools.Infrastructure.Tests" />
   </ItemGroup>
 
+  <ItemGroup>
+    <PackageReference Include="Microsoft.CodeAnalysis.CSharp" Version="5.9.0" />
+  </ItemGroup>
+
 </Project>

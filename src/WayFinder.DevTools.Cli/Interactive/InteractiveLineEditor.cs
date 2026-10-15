@@ -8,6 +8,9 @@ internal sealed class InteractiveLineEditor
     private readonly TextReader _input;
     private readonly TextWriter _output;
     private readonly InteractiveCommandCompleter _completer;
+    private int _promptWidth;
+    private int _cursorPosition;
+    private int _horizontalOffset;
 
     private int _suggestionLineCount;
 
@@ -39,7 +42,9 @@ internal sealed class InteractiveLineEditor
         CancellationToken cancellationToken)
     {
         var buffer = new StringBuilder();
-
+        _promptWidth = Console.CursorLeft;
+        _cursorPosition = 0;
+        _horizontalOffset = 0;
         _suggestionLineCount = 0;
 
         while (true)
@@ -58,9 +63,33 @@ internal sealed class InteractiveLineEditor
                 case ConsoleKey.Backspace:
                     ClearSuggestions();
 
-                    if (buffer.Length > 0)
+                    if (_cursorPosition > 0)
                     {
-                        buffer.Length--;
+                        buffer.Remove(_cursorPosition - 1, 1);
+                        _cursorPosition--;
+
+                        RedrawInput(buffer);
+                    }
+
+                    break;
+
+                case ConsoleKey.LeftArrow:
+                    ClearSuggestions();
+
+                    if (_cursorPosition > 0)
+                    {
+                        _cursorPosition--;
+                        RedrawInput(buffer);
+                    }
+
+                    break;
+
+                case ConsoleKey.RightArrow:
+                    ClearSuggestions();
+
+                    if (_cursorPosition < buffer.Length)
+                    {
+                        _cursorPosition++;
                         RedrawInput(buffer);
                     }
 
@@ -70,12 +99,39 @@ internal sealed class InteractiveLineEditor
                     Complete(buffer);
                     break;
 
+                case ConsoleKey.Home:
+                    ClearSuggestions();
+
+                    _cursorPosition = 0;
+                    RedrawInput(buffer);
+                    break;
+
+                case ConsoleKey.End:
+                    ClearSuggestions();
+
+                    _cursorPosition = buffer.Length;
+                    RedrawInput(buffer);
+                    break;
+
+                case ConsoleKey.Delete:
+                    ClearSuggestions();
+
+                    if (_cursorPosition < buffer.Length)
+                    {
+                        buffer.Remove(_cursorPosition, 1);
+                        RedrawInput(buffer);
+                    }
+
+                    break;
+
                 default:
                     if (!char.IsControl(key.KeyChar))
                     {
                         ClearSuggestions();
 
-                        buffer.Append(key.KeyChar);
+                        buffer.Insert(_cursorPosition, key.KeyChar);
+                        _cursorPosition++;
+
                         RedrawInput(buffer);
                     }
 
@@ -103,6 +159,9 @@ internal sealed class InteractiveLineEditor
         {
             buffer.Clear();
             buffer.Append(matches[0]);
+
+            _cursorPosition = buffer.Length;
+            _horizontalOffset = 0;
 
             RedrawInput(buffer);
             return;
@@ -192,11 +251,51 @@ internal sealed class InteractiveLineEditor
 
     private void RedrawInput(StringBuilder buffer)
     {
+        var terminalWidth = Console.WindowWidth;
+
+        var availableWidth = Math.Max(
+            1,
+            terminalWidth - _promptWidth - 1
+        );
+
+        // Keep the cursor inside the visible window.
+        if (_cursorPosition < _horizontalOffset)
+        {
+            _horizontalOffset = _cursorPosition;
+        }
+        else if (_cursorPosition > _horizontalOffset + availableWidth)
+        {
+            _horizontalOffset = _cursorPosition - availableWidth;
+        }
+
+        var text = buffer.ToString();
+
+        var visibleLength = Math.Min(
+            availableWidth,
+            text.Length - _horizontalOffset
+        );
+
+        var visibleText = text.Substring(
+            _horizontalOffset,
+            visibleLength
+        );
+
         _output.Write("\r\u001b[2K");
 
         InteractivePresentation.WritePrompt(_output);
 
-        _output.Write(buffer.ToString());
+        _output.Write(visibleText);
+
+        // Position the terminal cursor at the logical insertion point.
+        var cursorColumn =
+            _promptWidth + _cursorPosition - _horizontalOffset;
+
+        Console.SetCursorPosition(
+            Math.Min(cursorColumn, terminalWidth - 1),
+            Console.CursorTop
+        );
+
+        _output.Flush();
     }
 
     public async Task<bool> ReadConfirmationAsync(

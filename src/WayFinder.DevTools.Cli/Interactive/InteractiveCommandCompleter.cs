@@ -55,6 +55,31 @@ internal sealed class InteractiveCommandCompleter
                 completion.Subcommands);
         }
 
+        // Complete argument values when supported by the command.
+        if (command is IInteractiveArgumentCompletion argumentCompletion)
+        {
+            var lastSeparatorIndex = input.LastIndexOf(' ');
+            var prefix = input[(lastSeparatorIndex + 1)..];
+
+            var completedArguments = input[
+                (separatorIndex + 1)..lastSeparatorIndex
+            ].Split(
+                ' ',
+                StringSplitOptions.RemoveEmptyEntries);
+
+            var candidates = argumentCompletion.CompleteArguments(
+                completedArguments,
+                prefix);
+
+            if (candidates.Count > 0)
+            {
+                return candidates
+                    .Select(candidate =>
+                        $"{input[..(lastSeparatorIndex + 1)]}{candidate}")
+                    .ToArray();
+            }
+        }
+
         // Commands with subcommand-specific options, such as /git.
         var tokens = remainder.Split(
             ' ',

@@ -4,7 +4,7 @@ internal static class ConsolePresenter
 {
     private const string Margin = "  ";
     private const string Indent = "    ";
-    private const int PropertyWidth = 12;
+    private const int PropertyWidth = 24;
 
     public static void Header(
         TextWriter output,
@@ -29,8 +29,12 @@ internal static class ConsolePresenter
         string name,
         string value)
     {
+        var label = name.PadRight(
+            Math.Max(PropertyWidth, name.Length + 2)
+        );
+
         output.WriteLine(
-            $"{Indent}{ConsoleTheme.Secondary(name.PadRight(PropertyWidth))}{value}"
+            $"{Indent}{ConsoleTheme.Secondary(label)}{value}"
         );
     }
 
