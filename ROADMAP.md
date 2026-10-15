@@ -6,9 +6,9 @@ This document tracks **future direction and milestone status**. Architectural in
 
 ## Current status
 
-- **Completed:** Git integration and hardening through Milestone 16; subsequent interactive CLI and AI-conversation improvements (unreleased).
-- **Next:** Milestone 17 — Repository Intelligence (scope to be agreed before implementation).
-- **Verification baseline:** 342 passing tests at completion of Milestone 16; latest reported interactive CLI run: 415 passed / 1 failed before the goodbye assertion was corrected. A fresh full-suite result after the final changes has not been supplied.
+- **Completed:** Milestone 16 Git integration and Milestone 17 Repository Intelligence (increments 17.1–17.6); interactive CLI and AI-conversation improvements (unreleased).
+- **Next:** Not selected; agree on scope and security implications before beginning another milestone.
+- **Verification:** Milestone 17 repository tests and the MCP stdio `tools/list` integration test were reported passing. A current full-suite test count and external Copilot/Claude validation of the new tools have not been supplied.
 
 ## Delivered capabilities
 
@@ -20,8 +20,9 @@ This document tracks **future direction and milestone status**. Architectural in
 | Project registry | Implemented | AI-facing access limited to explicitly registered projects. |
 | Repository search and source retrieval | Implemented | Literal search, bounded whole-file reads, targeted line ranges. |
 | Context compilation | Implemented | Deterministic, budgeted context packages. |
-| MCP adapter | Implemented | `projects`, `context`, `repo_search`, `repo_read`. |
+| MCP adapter | Implemented | Existing project/context/search/read and Git tools; five Repository Intelligence tools added in Milestone 17. |
 | Git inspection | Completed (Milestone 16) | `git_status`, `git_diff`, `git_log`; read-only command allowlist and bounded subprocess execution. |
+| Repository Intelligence | Completed (Milestone 17.1–17.6) | Solution/project discovery, project relationships, Roslyn C# symbols, source lines/declarations; CLI and MCP adapters. |
 | Interactive CLI | Implemented (unreleased) | `wayfinder interactive`; local slash commands, AI conversation through a configured Copilot session, command/subcommand/option completion, terminal presentation and usage metrics. |
 
 ## Interactive CLI — delivered in the current iteration
@@ -33,32 +34,26 @@ This document tracks **future direction and milestone status**. Architectural in
 - Exit/quit display one goodbye message with a randomized developer-themed sign-off.
 - **Follow-up:** Validate the complete test suite after the goodbye-output regression fix; do not treat a configured provider as a verified connectivity check.
 
-## Milestone 17 — Repository Intelligence
+## Milestone 17 — Repository Intelligence (completed: 17.1–17.6)
 
 **Goal:** Help AI clients locate relevant code and understand repository structure without repeatedly reading whole files.
 
-Proposed increments (not yet committed implementation scope):
+### Delivered increments
 
-1. **Solution and project discovery:** Identify `.sln`/`.slnx` and project files, with compact project-relative results.
-2. **Project relationships:** Identify references between .NET projects and expose a bounded dependency view.
-3. **C# symbol discovery:** Find namespaces, types, and members with file paths and line locations.
-4. **Targeted navigation:** Allow clients to move from a discovered symbol to a small source range using existing `repo_read`.
-5. **MCP/CLI exposure:** Reuse shared application services; keep adapters thin and responses structured.
+1. **17.1 — Solution and project discovery:** Discover `.sln`, `.slnx`, and .NET project files with project-relative results; discovery caps are 100 solutions and 500 projects.
+2. **17.2 — Project relationships:** Inspect target frameworks, project references, and external assembly reference metadata (including `HintPath` and `CopyLocal`); do not inspect referenced DLL contents.
+3. **17.3 — C# symbol discovery:** Use Roslyn to locate namespaces, types, and members, including qualified names and source line locations.
+4. **17.4 — Targeted source navigation:** Read bounded line ranges or locate a declaration by qualified name, without requiring whole-file retrieval.
+5. **17.5 — CLI integration:** `/repo discover`, `/repo relationships`, `/repo symbols`, `/repo source lines`, and `/repo source declaration`, including interactive completion.
+6. **17.6 — MCP integration:** Expose `repo_discover`, `repo_relationships`, `repo_symbols`, `repo_source_lines`, and `repo_source_declaration` through the shared application services.
 
-### Design constraints
+### Verification and boundaries
 
-- Read-only; only registered repositories are accessible to MCP clients.
-- Reuse the existing project filesystem security boundary.
-- Favor deterministic, bounded, project-relative results and incremental exploration.
-- Do not introduce a vector index or Roslyn dependency without a demonstrated requirement and an explicit design decision.
-- Agree on each increment's contract and tests before implementation.
-
-### Definition of done (proposed)
-
-- An AI client can identify a project or symbol and retrieve only the relevant source lines.
-- Results are bounded, deterministic, and respect project access controls.
-- CLI and MCP adapters share implementation logic.
-- Tests, build, and external-client verification pass for the agreed scope.
+- The real MCP server was started over stdio by a test client; MCP initialization and `tools/list` succeeded, and all five new tool names were asserted.
+- Repository operations remain read-only and project-relative; MCP tools resolve registered projects by registered name or GUID.
+- Discovery excludes configured hidden/build directories and does not traverse directory symbolic links. Existing filesystem containment and bounded source-read policies remain in force.
+- **Known follow-ups:** Discovery caps are enforced but truncation is not yet surfaced to callers. External Copilot/Claude use of the new MCP tools has not yet been verified. Filesystem symlink-chain and race-condition limitations still warrant separate review; do not describe the boundary as a complete sandbox.
+- A fresh complete test-suite result has not been recorded in this document.
 
 ## Later directions — not scheduled
 

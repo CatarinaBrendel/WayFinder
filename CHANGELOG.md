@@ -4,6 +4,22 @@ Notable completed changes to WayFinder.DevTools are recorded here. Entries are g
 
 ## Unreleased
 
+### Milestone 17 — Repository Intelligence (completed: 17.1–17.6)
+
+**Added**
+- Solution and .NET project discovery (`.sln`, `.slnx`, project files), bounded to 100 solutions and 500 projects.
+- Project relationship inspection: target frameworks, project references, and external assembly metadata (`HintPath`, `CopyLocal`) without loading external DLLs.
+- Roslyn-backed C# namespace/type/member discovery with qualified names, project-relative paths, and line locations.
+- Targeted source navigation by line range and qualified declaration name.
+- CLI commands `/repo discover`, `/repo relationships`, `/repo symbols`, `/repo source lines`, and `/repo source declaration`, with interactive completion.
+- MCP tools `repo_discover`, `repo_relationships`, `repo_symbols`, `repo_source_lines`, and `repo_source_declaration`, implemented as adapters over shared services.
+
+**Security and verification**
+- MCP tools require registered-project resolution; source access retains project-relative containment, read-only behavior, and existing bounded reads.
+- Directory symlink traversal and configured hidden/build directories remain excluded from discovery.
+- Repository Intelligence unit/integration tests were reported green. A protocol-level integration test launched the actual stdio MCP server and asserted all five new tools through `tools/list`.
+- Discovery result caps do not currently expose truncation metadata. External Copilot/Claude verification of the new tools and a final full-suite count remain outstanding.
+
 ### Interactive CLI and AI conversations (implemented; milestone number not assigned)
 
 **Added**

@@ -18,6 +18,8 @@ public sealed class ProjectFileSystem : IProjectFileSystem
         "dist",
         "coverage",
     ];
+    private const int MaxDirectoryDepth = 32;
+    private const int MaxEnumeratedFiles = 50_000;
 
     public bool FileExists(ProjectContext project, string relativePath)
     {
@@ -74,16 +76,18 @@ public sealed class ProjectFileSystem : IProjectFileSystem
     }
 
     private static IReadOnlyCollection<ProjectFile> EnumerateFiles(
-        ProjectContext project
-    )
+    ProjectContext project
+)
     {
-        var files =
-            new List<ProjectFile>();
+        ArgumentNullException.ThrowIfNull(project);
+
+        var files = new List<ProjectFile>();
 
         EnumerateDirectory(
             project,
             new DirectoryInfo(project.RootPath),
-            files
+            files,
+            depth: 0
         );
 
         return files
@@ -95,18 +99,32 @@ public sealed class ProjectFileSystem : IProjectFileSystem
     }
 
     private static void EnumerateDirectory(
-        ProjectContext project,
-        DirectoryInfo directory,
-        ICollection<ProjectFile> files
-    )
+     ProjectContext project,
+     DirectoryInfo directory,
+     ICollection<ProjectFile> files,
+     int depth
+ )
     {
+        if (depth > MaxDirectoryDepth)
+        {
+            throw new IOException(
+                $"Repository directory depth exceeds the limit of {MaxDirectoryDepth}."
+            );
+        }
+
         foreach (var file in directory.EnumerateFiles())
         {
-            var path =
-                ResolveExistingPath(
-                    project,
-                    file.FullName
+            if (files.Count >= MaxEnumeratedFiles)
+            {
+                throw new IOException(
+                    $"Repository file count exceeds the limit of {MaxEnumeratedFiles}."
                 );
+            }
+
+            var path = ResolveExistingPath(
+                project,
+                file.FullName
+            );
 
             files.Add(
                 new ProjectFile(
@@ -127,14 +145,14 @@ public sealed class ProjectFileSystem : IProjectFileSystem
 
             if (child.LinkTarget is not null)
             {
-                // V1: don't traverse directory symlinks at all.
                 continue;
             }
 
             EnumerateDirectory(
                 project,
                 child,
-                files
+                files,
+                depth + 1
             );
         }
     }
@@ -172,6 +190,11 @@ public sealed class ProjectFileSystem : IProjectFileSystem
         var candidate = Path.GetFullPath(path);
 
         EnsureContained(projectRoot, candidate);
+
+        EnsureDirectoryLinksContained(
+            projectRoot,
+            candidate
+        );
 
         var info = new FileInfo(candidate);
 
@@ -321,7 +344,6 @@ public sealed class ProjectFileSystem : IProjectFileSystem
         return EnumerateFiles(project);
     }
 
-
     public IReadOnlyCollection<ProjectDirectoryEntry> GetEntries(
         ProjectContext project,
         string relativePath
@@ -404,6 +426,46 @@ public sealed class ProjectFileSystem : IProjectFileSystem
             .OrderByDescending(entry => entry.IsDirectory)
             .ThenBy(entry => entry.Name, StringComparer.Ordinal)
             .ToArray();
+    }
+
+    private static void EnsureDirectoryLinksContained(
+    string projectRoot,
+    string candidate
+)
+    {
+        var relativePath = Path.GetRelativePath(projectRoot, candidate);
+
+        var segments = relativePath.Split(
+            Path.DirectorySeparatorChar,
+            StringSplitOptions.RemoveEmptyEntries
+        );
+
+        var currentPath = projectRoot;
+
+        // The final segment is the file itself.
+        // ResolveExistingPath already validates file symlinks.
+        for (var i = 0; i < segments.Length - 1; i++)
+        {
+            currentPath = Path.Combine(currentPath, segments[i]);
+
+            var directory = new DirectoryInfo(currentPath);
+
+            if (directory.LinkTarget is null)
+            {
+                continue;
+            }
+
+            var target = directory.ResolveLinkTarget(
+                returnFinalTarget: true
+            ) ?? throw new IOException(
+                $"Could not resolve directory symlink '{currentPath}'."
+            );
+
+            EnsureContained(
+                projectRoot,
+                Path.GetFullPath(target.FullName)
+            );
+        }
     }
 
 }

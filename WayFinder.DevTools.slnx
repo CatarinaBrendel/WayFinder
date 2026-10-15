@@ -9,5 +9,6 @@
     <Project Path="tests/WayFinder.DevTools.Application.Tests/WayFinder.DevTools.Application.Tests.csproj" />
     <Project Path="tests/WayFinder.DevTools.Cli.Tests/WayFinder.DevTools.Cli.Tests.csproj" />
     <Project Path="tests/WayFinder.DevTools.Infrastructure.Tests/WayFinder.DevTools.Infrastructure.Tests.csproj" />
+    <Project Path="tests/WayFinder.DevTools.Mcp.Tests/WayFinder.DevTools.Mcp.Tests.csproj" />
   </Folder>
 </Solution>

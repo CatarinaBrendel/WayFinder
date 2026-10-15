@@ -11,10 +11,13 @@ public sealed class RepositoryDiscoveryService(
     public RepositoryDiscoveryResult Discover(ProjectContext project)
     {
         ArgumentNullException.ThrowIfNull(project);
+
+        const int maxSolutions = 100;
+        const int maxProjects = 500;
+
         var files = fileSystem.GetFiles(project);
 
-        var solutions = fileSystem
-            .GetFiles(project)
+        var solutions = files
             .Where(file =>
                 file.RelativePath.EndsWith(
                     ".sln",
@@ -25,6 +28,11 @@ public sealed class RepositoryDiscoveryService(
                     StringComparison.OrdinalIgnoreCase
                 )
             )
+            .OrderBy(
+                file => file.RelativePath,
+                StringComparer.Ordinal
+            )
+            .Take(maxSolutions)
             .Select(file =>
                 new RepositorySolution(
                     Path.GetFileNameWithoutExtension(file.RelativePath),
@@ -33,12 +41,18 @@ public sealed class RepositoryDiscoveryService(
             )
             .ToArray();
 
-        var projects = files.Where(file =>
+        var projects = files
+            .Where(file =>
                 file.RelativePath.EndsWith(
                     ".csproj",
                     StringComparison.OrdinalIgnoreCase
                 )
             )
+            .OrderBy(
+                file => file.RelativePath,
+                StringComparer.Ordinal
+            )
+            .Take(maxProjects)
             .Select(file =>
                 new RepositoryProject(
                     Path.GetFileNameWithoutExtension(file.RelativePath),

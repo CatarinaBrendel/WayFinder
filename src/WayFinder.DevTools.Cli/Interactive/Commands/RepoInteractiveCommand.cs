@@ -664,17 +664,32 @@ public sealed class RepoInteractiveCommand : IInteractiveCommand, IInteractiveCo
         ArgumentNullException.ThrowIfNull(arguments);
         ArgumentNullException.ThrowIfNull(prefix);
 
-        if (arguments.Count != 1)
+        var shouldCompleteProject = arguments.Count switch
         {
-            return [];
-        }
+            1 => arguments[0].Equals(
+                    "discover",
+                    StringComparison.OrdinalIgnoreCase)
+                || arguments[0].Equals(
+                    "relationships",
+                    StringComparison.OrdinalIgnoreCase)
+                || arguments[0].Equals(
+                    "symbols",
+                    StringComparison.OrdinalIgnoreCase),
 
-        var subcommand = arguments[0];
+            2 => arguments[0].Equals(
+                    "source",
+                    StringComparison.OrdinalIgnoreCase)
+                && (arguments[1].Equals(
+                        "lines",
+                        StringComparison.OrdinalIgnoreCase)
+                    || arguments[1].Equals(
+                        "declaration",
+                        StringComparison.OrdinalIgnoreCase)),
 
-        if (subcommand is not (
-            "discover" or
-            "relationships" or
-            "symbols"))
+            _ => false
+        };
+
+        if (!shouldCompleteProject)
         {
             return [];
         }

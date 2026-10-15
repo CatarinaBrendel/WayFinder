@@ -222,6 +222,11 @@ repo_read
 git_status
 git_diff
 git_log
+repo_discover
+repo_relationships
+repo_symbols
+repo_source_lines
+repo_source_declaration
 ```
 
 MCP tools must remain thin adapters. Validation and response mapping
@@ -789,30 +794,39 @@ observed through dogfooding, not as a provider-neutral optimum.
 
 ---
 
-## Milestone 17 — Repository Intelligence
+## Repository Intelligence (Milestone 17)
 
-Implement the scope approved in `ROADMAP.md` incrementally. Repository
-intelligence must help locate code without exposing or reading entire
-repositories by default.
+Repository Intelligence is implemented as shared Application/Infrastructure
+services exposed by thin CLI and MCP adapters. It is read-only and intended
+to locate relevant code before requesting source text.
 
-- Start with factual discovery of `.sln`, `.slnx`, and .NET project files;
-  keep results project-relative, stable, and bounded.
-- Build project-reference and target-framework inspection on shared
-  application contracts, not duplicated CLI/MCP parsing.
-- Introduce C# symbol discovery and targeted navigation only after
-  agreeing on the accuracy and output contracts. Reuse ranged `repo_read`
-  for source retrieval rather than inventing an unrestricted read API.
-- AI-facing operations must resolve registered projects and access their
-  contents through `IProjectFileSystem`; reject traversal and link escapes.
-- Exclude generated/build directories, bound enumeration and output, and
-  report truncation rather than silently returning incomplete results.
-- Do not add Roslyn, an index, or a new parser dependency until a concrete
-  requirement justifies it. Support legacy .NET Framework projects without
-  assuming the current SDK can build them.
-- Test deterministic ordering, malformed project data, project boundaries,
-  output limits, and cross-platform paths before exposing new MCP tools.
-- Preserve technology-agnostic project inspection: .NET intelligence is
-  an additional capability, not a requirement for all repositories.
+- `repo_discover` identifies `.sln`, `.slnx`, and .NET project files;
+  discovery caps are 100 solutions and 500 projects. These caps are
+  enforced, but discovery truncation is not currently reported to callers.
+- `repo_relationships` inspects target frameworks, project references, and
+  external assembly reference metadata (`HintPath`, `CopyLocal`). It must not
+  load or inspect referenced external DLL contents as part of this operation.
+- `repo_symbols` uses Roslyn to discover C# namespaces, types, and members;
+  return qualified names, project-relative paths, line locations, and
+  truncation state where supported.
+- `repo_source_lines` retrieves bounded source ranges;
+  `repo_source_declaration` navigates to a declaration by qualified name.
+  Neither tool grants unrestricted file access.
+- Human-facing equivalents are `/repo discover`, `/repo relationships`,
+  `/repo symbols`, `/repo source lines`, and `/repo source declaration`.
+- All AI-facing operations must resolve registered projects and access
+  project content through `IProjectFileSystem`. Reject absolute paths,
+  traversal, and filesystem links escaping the registered project.
+- Keep results deterministic, bounded, and project-relative; exclude
+  configured generated/build directories and directory symlink traversal.
+- Do not equate filesystem containment checks with a complete OS sandbox;
+  symlink-chain and filesystem race conditions remain review considerations.
+- For protocol regression coverage, launch the actual MCP stdio server,
+  initialize an MCP client, call `tools/list`, and assert the expected tools.
+  Keep diagnostic output on stderr, never protocol stdout.
+- Roslyn is an approved dependency for C# symbol discovery. Preserve
+  technology-agnostic inspection for non-.NET repositories and support
+  inspecting legacy .NET Framework project metadata without requiring builds.
 
 ---
 

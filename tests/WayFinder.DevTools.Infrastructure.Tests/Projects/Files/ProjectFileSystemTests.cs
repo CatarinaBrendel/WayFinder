@@ -911,6 +911,45 @@ public sealed class ProjectFileSystemTests : IDisposable
         );
     }
 
+    [Fact]
+    public void Read_ThroughExternalDirectorySymlink_Throws()
+    {
+        var outside = Path.Combine(
+            Path.GetTempPath(),
+            $"wayfinder-outside-{Guid.NewGuid():N}"
+        );
+
+        Directory.CreateDirectory(outside);
+
+        try
+        {
+            File.WriteAllText(
+                Path.Combine(outside, "secret.txt"),
+                "secret"
+            );
+
+            Directory.CreateSymbolicLink(
+                Path.Combine(_root, "external"),
+                outside
+            );
+
+            Assert.Throws<UnauthorizedAccessException>(
+                () => _fileSystem.Read(
+                    _project,
+                    Path.Combine("external", "secret.txt"),
+                    maxBytes: 64
+                )
+            );
+        }
+        finally
+        {
+            if (Directory.Exists(outside))
+            {
+                Directory.Delete(outside, recursive: true);
+            }
+        }
+    }
+
     public void Dispose()
     {
         if (Directory.Exists(_root))
