@@ -18,5 +18,6 @@
     "editor.formatOnSave": true
   },
   "files.insertFinalNewline": true,
-  "files.trimTrailingWhitespace": true
+  "files.trimTrailingWhitespace": true,
+  "dotnet.defaultSolution": "WayFinder.DevTools.slnx"
 }
