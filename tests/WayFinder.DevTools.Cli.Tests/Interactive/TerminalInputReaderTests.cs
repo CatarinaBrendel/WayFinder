@@ -171,8 +171,8 @@ public sealed class TerminalInputReaderTests
     [Theory]
     [InlineData("\u001bOD", (int)TerminalInputKind.LeftArrow)]
     [InlineData("\u001bOC", (int)TerminalInputKind.RightArrow)]
-    [InlineData("\u001b[1;2D", (int)TerminalInputKind.LeftArrow)]
-    [InlineData("\u001b[1;2C", (int)TerminalInputKind.RightArrow)]
+    [InlineData("\u001b[1;2D", (int)TerminalInputKind.ShiftLeftArrow)]
+    [InlineData("\u001b[1;2C", (int)TerminalInputKind.ShiftRightArrow)]
     public void Feed_AdditionalArrowSequences_ReturnExpectedEvents(
     string sequence,
     int expected)
