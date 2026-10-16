@@ -1361,3 +1361,28 @@ concrete use case.
 
 WayFinder should make safe, efficient behavior the easiest behavior to
 implement.
+
+---
+
+## Milestone 19 — Current syntax-analysis tool boundaries (2026-10-16)
+
+These additions supplement, and do not weaken, the earlier security rules.
+
+- `repo_symbols` includes constructors, properties, fields, events, delegates
+  and indexers; analysis remains syntactic.
+- `repo_type_relationships` reports *declared* C# base types/interfaces for
+  one source file; it does not resolve inheritance semantically. Limits:
+  1 MiB/file and 500 results, with truncation metadata.
+- `repo_references` reports matching *identifier occurrences*, not verified
+  references to a particular symbol. Matching is case-sensitive and includes
+  generic identifiers; declaration identifiers are excluded. Limits: 1,000
+  examined `.cs` files, 1 MiB/file and 200 results. `Truncated` indicates an
+  incomplete search, including unreadable or oversized files.
+- All new MCP tools must resolve a registered project and use the existing
+  project-scoped filesystem. They must not compile repository code, execute
+  arbitrary commands, load referenced assemblies or bypass existing containment.
+- The Explorer agent and launcher use explicit tool lists. Copilot-native
+  shell, filesystem and delegated-agent permissions are independent of MCP
+  registration and require separate containment validation.
+- Focused M19 tests and builds were reported green; complete solution-suite
+  and final installed-client verification were not explicitly confirmed.

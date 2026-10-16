@@ -290,6 +290,127 @@ public sealed class RepositorySymbolReaderTests
         }
     }
 
+    [Fact]
+    public void Read_DiscoversCSharpMembers()
+    {
+        var root = CreateTemporaryDirectory();
+
+        try
+        {
+            File.WriteAllText(
+                Path.Combine(root, "Example.cs"),
+                """
+            namespace Example;
+
+            public delegate void ChangedHandler();
+
+            public class CustomerService
+            {
+                private int _count, _total;
+
+                public CustomerService() { }
+
+                public string Name { get; set; } = "";
+
+                public event ChangedHandler? Changed;
+
+                public event ChangedHandler Updated
+                {
+                    add { }
+                    remove { }
+                }
+
+                public string this[int index] => "";
+
+                public void Execute()
+                {
+                    int temporary = 10;
+                }
+            }
+            """
+            );
+
+            var reader = new RepositorySymbolReader(
+                new ProjectFileSystem()
+            );
+
+            var result = reader.Read(
+                new ProjectContext("Example", root, false),
+                "Example.cs"
+            );
+
+            Assert.False(result.Truncated);
+
+            var symbols = result.Symbols;
+
+            Assert.Contains(
+                symbols,
+                symbol =>
+                    symbol.Name == "ChangedHandler"
+                    && symbol.Kind == RepositorySymbolKind.Delegate
+            );
+
+            Assert.Contains(
+                symbols,
+                symbol =>
+                    symbol.QualifiedName == "Example.CustomerService._count"
+                    && symbol.Kind == RepositorySymbolKind.Field
+            );
+
+            Assert.Contains(
+                symbols,
+                symbol =>
+                    symbol.QualifiedName == "Example.CustomerService._total"
+                    && symbol.Kind == RepositorySymbolKind.Field
+            );
+
+            Assert.Contains(
+                symbols,
+                symbol =>
+                    symbol.QualifiedName ==
+                        "Example.CustomerService.CustomerService"
+                    && symbol.Kind == RepositorySymbolKind.Constructor
+            );
+
+            Assert.Contains(
+                symbols,
+                symbol =>
+                    symbol.QualifiedName == "Example.CustomerService.Name"
+                    && symbol.Kind == RepositorySymbolKind.Property
+            );
+
+            Assert.Contains(
+                symbols,
+                symbol =>
+                    symbol.QualifiedName == "Example.CustomerService.Changed"
+                    && symbol.Kind == RepositorySymbolKind.Event
+            );
+
+            Assert.Contains(
+                symbols,
+                symbol =>
+                    symbol.QualifiedName == "Example.CustomerService.Updated"
+                    && symbol.Kind == RepositorySymbolKind.Event
+            );
+
+            Assert.Contains(
+                symbols,
+                symbol =>
+                    symbol.QualifiedName == "Example.CustomerService.this[]"
+                    && symbol.Kind == RepositorySymbolKind.Indexer
+            );
+
+            Assert.DoesNotContain(
+                symbols,
+                symbol => symbol.Name == "temporary"
+            );
+        }
+        finally
+        {
+            Directory.Delete(root, recursive: true);
+        }
+    }
+
     private static string CreateTemporaryDirectory()
     {
         var root = Path.Combine(

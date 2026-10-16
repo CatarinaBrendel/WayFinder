@@ -4,6 +4,37 @@ Notable completed changes to WayFinder.DevTools are recorded here. Entries are g
 
 ## Unreleased
 
+### Milestone 19 — C# syntax intelligence (local implementation, 2026-10-16)
+
+**19.1 — C# member discovery**
+- Expanded `repo_symbols` to report constructors, properties, fields, events,
+  delegates and indexers; field/event declarations do not include local variables.
+- Focused tests reported passing.
+
+**19.2 — Declared type relationships**
+- Added `repo_type_relationships`, a Roslyn syntax-only reader for declared
+  base types and interfaces in a registered-project C# source file.
+- Added 1 MiB input limit and 500-result limit with explicit truncation;
+  type-shape, oversized-file and 500/501 boundary tests reported passing.
+- Registered the reader in manual composition and added the tool to Explorer
+  agent and launcher allowlists.
+
+**19.3 — Syntactic reference discovery**
+- Added `repo_references`, a read-only, case-sensitive identifier occurrence
+  search across C# files using Roslyn `SimpleNameSyntax`.
+- Returns source locations, syntax-based classifications, files examined,
+  truncation and `Resolution: "Syntactic"`; it does not resolve symbol identity.
+- Bounded to 1,000 examined files, 1 MiB/file and 200 references. Oversized or
+  malformed UTF-16 files mark the search incomplete; shared decoder retains
+  UTF-8, UTF-16 BOM and Windows-1252 fallback behavior.
+- Registered the reader in composition and exposed an MCP tool. Explorer agent
+  and launcher entries were provided for integration.
+- **Verification reported:** Infrastructure and MCP builds and 11 focused
+  reference-reader test cases green, including 200/201 references, 1,001 files,
+  oversized source and malformed UTF-16 continuation.
+- **Not yet evidenced:** Complete solution test result, final installation
+  confirmation and end-to-end invocation of the new tools from Copilot CLI.
+
 ### Direction adopted — Copilot-first MCP platform (2026-10-16; documentation/planning)
 
 **Decision — not a delivered runtime feature**

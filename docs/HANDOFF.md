@@ -1,38 +1,40 @@
-# WayFinder documentation handoff — 2026-10-16
+# WayFinder documentation handoff — 2026-10-16 (M19 update)
 
-This bundle contains updated versions of the **three existing primary
-repository documents**:
+## Files in this update
 
-1. `AGENTS.md` — existing architecture and security requirements retained;
-   documents Copilot-first strategy, legacy interactive CLI freeze, agent
-   boundaries and targeted .NET/C#/SQL Server/Sage/TFVC guidance.
-2. `ROADMAP.md` — records the accepted new direction and an explicit M18.0–18.5
-   plan, including acceptance criteria, gates and unresolved verification.
-3. `CHANGELOG.md` — logs the 2026-10-16 **documentation/product decision**
-   without inventing a completed runtime release.
+- `AGENTS.md` — retains the supplied architecture/security baseline and adds
+  M19 tool contracts and explicit syntactic-analysis limitations.
+- `ROADMAP.md` — updates the current inventory to 14 MCP tools and documents
+  M19.1–M19.3, remaining validation and future verification gates.
+- `CHANGELOG.md` — records locally implemented M19 changes and reported tests,
+  without claiming an unconfirmed full-suite run or deployment.
 
-## How to use
+## Status and evidence
 
-- **For the source repository:** review the diff, then replace the current
-  root `AGENTS.md`, `ROADMAP.md`, and `CHANGELOG.md` with these files. Do not
-  silently overwrite unrelated modifications made after the source snapshot.
-- **To resume work in ChatGPT:** upload these three Markdown files (or the ZIP)
-  and ask to begin **M18.1 — Copilot MCP end-to-end baseline**. If the files
-  are not yet incorporated into the repository, indicate that they are a
-  proposed documentation update, not an implementation milestone.
+The conversation reports successful builds and focused tests through M19.3,
+including 11 reference-reader test cases. The Explorer agent and launcher were
+updated for `repo_type_relationships`; instructions to add `repo_references`
+were provided and the user subsequently said “all green,” but no final
+command output confirming the full suite or installation was supplied.
 
-## Baseline
+**Do not treat this documentation snapshot as an inspection of the live local
+repository.** These files were derived from the attached documentation versions
+and the implementation details reported in the conversation, not from a fresh
+filesystem read of the user's Mac.
 
-Source documents reviewed: `AGENTS(20261015-090327).md`, `ROADMAP(5).md`,
-`CHANGELOG(5).md`. The original completed M16/M17 capabilities and security
-constraints were retained. No repository source code was accessed or changed;
-no builds/tests were executed.
+## Applying to the repository
 
-Copilot feature syntax and security controls were checked against GitHub Docs
-on 2026-10-16. Exact use and enforcement must still be validated against the
-locally installed CLI.
+Review changes against the live root files first; the attached baseline may be
+older than the working tree. Merge relevant sections rather than overwriting
+newer work. Suggested checks after merging:
 
-- MCP registration: https://docs.github.com/en/copilot/how-tos/copilot-cli/customize-copilot/add-mcp-servers
-- Custom instructions: https://docs.github.com/en/copilot/how-tos/copilot-cli/customize-copilot/add-custom-instructions
-- Tools/permission controls: https://docs.github.com/en/copilot/how-tos/copilot-cli/use-copilot-cli/allowing-tools
-- Custom agents: https://docs.github.com/en/copilot/how-tos/copilot-cli/use-copilot-cli/invoke-custom-agents
+```bash
+dotnet test WayFinder.DevTools.slnx
+git diff --check
+rg -n 'repo_references|repo_type_relationships' \
+  .github/agents/wayfinder-explorer.agent.md scripts/explore.sh
+./scripts/install.sh
+```
+
+Record the actual command results in the changelog. Do not claim that MCP
+registration alone constrains Copilot's native tools.

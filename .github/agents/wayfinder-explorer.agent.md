@@ -11,6 +11,8 @@ tools:
   - wayfinder-repo_symbols
   - wayfinder-repo_source_lines
   - wayfinder-repo_source_declaration
+  - wayfinder-repo_type_relationships
+  - wayfinder-repo_references
   - wayfinder-git_status
   - wayfinder-git_diff
   - wayfinder-git_log

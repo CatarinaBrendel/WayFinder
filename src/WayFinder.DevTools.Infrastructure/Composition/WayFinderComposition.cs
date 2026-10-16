@@ -19,6 +19,8 @@ using WayFinder.DevTools.Infrastructure.Repositories.Discovery;
 using WayFinder.DevTools.Infrastructure.Repositories.Relationships;
 using WayFinder.DevTools.Infrastructure.Repositories.Symbols;
 using WayFinder.DevTools.Infrastructure.Repositories.Navigation;
+using WayFinder.DevTools.Infrastructure.Repositories.TypeRelationships;
+using WayFinder.DevTools.Infrastructure.Repositories.References;
 
 namespace WayFinder.DevTools.Infrastructure.Composition;
 
@@ -131,6 +133,14 @@ public static class WayFinderComposition
             projectFileSystem
         );
 
+        var repositoryTypeRelationshipReader = new RepositoryTypeRelationshipReader(
+            projectFileSystem
+        );
+
+        var repositoryReferenceReader = new RepositoryReferenceReader(
+            projectFileSystem
+        );
+
         var repositorySourceNavigator = new RepositorySourceNavigator(
             projectFileSystem
         );
@@ -149,6 +159,8 @@ public static class WayFinderComposition
             RepositoryDiscoveryService: repositoryDiscoveryService,
             RepositoryRelationshipReader: repositoryRelationshipReader,
             RepositorySymbolReader: repositorySymbolReader,
+            RepositoryTypeRelationshipReader: repositoryTypeRelationshipReader,
+            RepositoryReferenceReader: repositoryReferenceReader,
             RepositorySourceNavigator: repositorySourceNavigator,
             Doctor: doctor,
             ContextCompiler: contextCompiler,

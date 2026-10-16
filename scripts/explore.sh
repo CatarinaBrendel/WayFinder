@@ -4,7 +4,7 @@ set -eu
 copilot \
   --agent wayfinder-explorer \
   --disable-builtin-mcps \
-  --available-tools='wayfinder-projects,wayfinder-context,wayfinder-repo_discover,wayfinder-repo_search,wayfinder-repo_read,wayfinder-repo_relationships,wayfinder-repo_symbols,wayfinder-repo_source_lines,wayfinder-repo_source_declaration,wayfinder-git_status,wayfinder-git_diff,wayfinder-git_log' \
+  --available-tools='wayfinder-projects,wayfinder-context,wayfinder-repo_discover,wayfinder-repo_search,wayfinder-repo_read,wayfinder-repo_relationships, wayfinder-repo_references,wayfinder-repo_type_relationships,wayfinder-repo_symbols,wayfinder-repo_source_lines,wayfinder-repo_source_declaration,wayfinder-git_status,wayfinder-git_diff,wayfinder-git_log' \
   --allow-tool='wayfinder' \
   "$@"
 

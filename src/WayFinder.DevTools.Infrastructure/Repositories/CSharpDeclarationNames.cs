@@ -18,6 +18,24 @@ internal static class CSharpDeclarationNames
             MethodDeclarationSyntax declaration =>
                 declaration.Identifier.ValueText,
 
+            ConstructorDeclarationSyntax declaration =>
+                declaration.Identifier.ValueText,
+
+            PropertyDeclarationSyntax declaration =>
+                declaration.Identifier.ValueText,
+
+            VariableDeclaratorSyntax declaration =>
+                declaration.Identifier.ValueText,
+
+            EventDeclarationSyntax declaration =>
+                declaration.Identifier.ValueText,
+
+            DelegateDeclarationSyntax declaration =>
+                declaration.Identifier.ValueText,
+
+            IndexerDeclarationSyntax =>
+                "this[]",
+
             _ => null
         };
     }

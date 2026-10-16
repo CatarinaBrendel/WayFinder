@@ -8,5 +8,12 @@ public enum RepositorySymbolKind
     Record,
     Struct,
     Enum,
-    Method
+    Method,
+
+    Constructor,
+    Property,
+    Field,
+    Event,
+    Delegate,
+    Indexer
 }

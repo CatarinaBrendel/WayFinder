@@ -4,10 +4,10 @@ WayFinder is a local-first, provider-neutral C#/.NET developer tooling platform.
 Its **preferred AI user interface is now GitHub Copilot CLI**; WayFinder supplies
 safe, bounded, project-aware MCP tools and shared developer intelligence.
 
-**Direction decision:** 2026-10-16. **Implementation status:** the new
-Copilot-first plan is approved for planning; M18 integration/security work
-remains to be verified or implemented. Existing CLI functionality is preserved
-but frozen for new interactive features.
+**Direction decision:** 2026-10-16. **Implementation status:** Copilot MCP
+integration and a read-only Explorer workflow have since been implemented and
+locally exercised. Security containment still requires separate verification.
+The existing interactive CLI is preserved but frozen for new features.
 
 This document tracks **future direction and milestone status**. Durable
 architectural/security rules live in `AGENTS.md`. Delivered changes and
@@ -15,19 +15,21 @@ verified results live in `CHANGELOG.md`.
 
 ## Current status and decision
 
-- **Completed:** Milestone 16 (read-only Git integration), Milestone 17
-  (Repository Intelligence 17.1–17.6), and earlier project/context tools.
-- **Implemented but frozen:** `wayfinder interactive` (local commands,
-  conversation over configured Copilot ACP, autocomplete and presentation).
-  Maintain for regressions and security/compatibility only; do not expand its
-  chat UX, add another TUI, or delete it as part of M18.
-- **Selected next:** Milestone 18 — Copilot integration and secure developer
-  tooling, beginning with **18.0 decision adoption and 18.1 real MCP validation**.
-- **Verification gap:** Last documented full-suite run was 415 pass / 1 fail,
-  followed by a fix for a goodbye-output assertion; a fresh complete suite
-  result is not recorded. M17 protocol-level `tools/list` test passed, but its
-  new MCP operations have not been validated end-to-end from external Copilot
-  or Claude clients.
+- **Completed in reported local development:** Milestones 16 and 17; M19.1
+  C# member discovery, M19.2 declared type relationships, and M19.3 syntactic
+  identifier reference discovery (implementation and focused tests).
+- **Copilot integration:** A WayFinder Explorer agent, installation/registration
+  scripts and explicit MCP tool allowlists have been configured. The new M19
+  tools have been added to the agent and launcher. Copilot's native tools are
+  a separate security boundary; an allowlist is not proof of OS-level isolation.
+- **M19.3 verification:** Infrastructure and MCP builds and 11 focused
+  reference-reader test cases were reported passing. The full-suite and final
+  post-installation results were requested but **not explicitly confirmed** in
+  the available conversation. Do not record them as verified.
+- **Implemented but frozen:** `wayfinder interactive`; maintain for security,
+  compatibility and regressions only.
+- **Next:** confirm full-suite/deployment state, document residual security
+  limitations, then prioritize the next bounded repository-intelligence task.
 
 ## Product boundaries
 
@@ -54,16 +56,17 @@ Application/Infrastructure code should depend on Copilot-specific behavior.
 | Project/technology detection | Implemented | Generic detector/signature model and optional `wayfinder.json`. |
 | Search and source reads | Implemented | Literal bounded search, bounded UTF-8 whole-file/line reads. |
 | Context compiler | Implemented | Deterministic budgeted packages; MCP default 4,000 estimated tokens. |
-| MCP server | Implemented | Stdio transport; 12 tools listed below. |
+| MCP server | Implemented | Stdio transport; 14 tools in the current implementation inventory. |
 | Read-only Git | Completed (M16) | `git_status`, `git_diff`, `git_log`; trusted-repository configuration caveat. |
 | Repository intelligence | Completed (M17) | .NET discovery, relationships, Roslyn symbols, source lines and declarations. |
 | Interactive CLI/ACP | Implemented; **frozen** | Existing features retained, no new UX roadmap. |
 
-### Existing MCP tool inventory (12)
+### Current MCP tool inventory (14)
 
 `projects`, `context`, `repo_search`, `repo_read`, `git_status`, `git_diff`,
 `git_log`, `repo_discover`, `repo_relationships`, `repo_symbols`,
-`repo_source_lines`, `repo_source_declaration`.
+`repo_source_lines`, `repo_source_declaration`, `repo_type_relationships`,
+`repo_references`.
 
 ### M17 behavioral boundaries to preserve
 
@@ -92,11 +95,11 @@ WayFinder's custom interactive AI CLI as the preferred workflow.
   defaults; document provider-neutral vs Copilot-specific ownership.
 - Update `AGENTS.md`, `ROADMAP.md`, `CHANGELOG.md` consistently.
 
-**State:** This documentation package is a proposed repo update; count 18.0 as
-adopted only after the files are reviewed and incorporated into the source
-repository. No runtime feature is delivered by documentation alone.
+**State:** Direction adopted. This document is an updated snapshot; confirm
+repository incorporation independently. Documentation alone does not deliver
+runtime functionality.
 
-### 18.1 — Real Copilot ↔ WayFinder MCP baseline (FIRST technical increment)
+### 18.1 — Real Copilot ↔ WayFinder MCP baseline (partially verified)
 
 **Goal:** Prove that current MCP functionality works reliably, securely and
 with bounded cost inside the installed Copilot CLI.
@@ -133,7 +136,7 @@ Inside Copilot use `/mcp show wayfinder`. Review available permissions and
 **do not** interpret MCP registration as restricting Copilot's other tools.
 GitHub documentation: https://docs.github.com/en/copilot/how-tos/copilot-cli/customize-copilot/add-mcp-servers
 
-### 18.2 — Read-only Copilot agent and permission policy
+### 18.2 — Read-only Copilot agent and permission policy (implemented; containment review open)
 
 **Goal:** Provide a reproducible WayFinder Explorer that performs only bounded
 inspection of registered projects.
@@ -203,6 +206,50 @@ roles should reuse WayFinder MCP APIs and have narrower permissions.
 **Gate:** Do not implement a second orchestrator until measured failures of
 Copilot-native delegation justify it. Do not add arbitrary shell, file-write,
 Git mutation, SQL execution or deployment capabilities through M18 by default.
+
+## Milestone 19 — C# syntax intelligence (implemented; verification noted below)
+
+### 19.1 — C# member discovery
+
+Extended `repo_symbols` to discover constructors, properties, fields, events,
+delegates and indexers in addition to existing declarations. Field/event
+variable discovery excludes local variables. Roslyn syntax-only parsing; no
+compilation or semantic symbol binding. Focused tests reported passing.
+
+### 19.2 — Declared type relationships
+
+Added `repo_type_relationships` for declared class/interface/struct/record
+base-type lists in a single registered-project C# file. Returns qualified
+names, source locations and syntactically declared base types; does not resolve
+actual type identities or load assemblies. Source size limit: 1 MiB; output
+limit: 500 relationships with explicit `Truncated` status. Boundary tests at
+500/501 and type-shape tests reported passing. Wired into composition and the
+Explorer tool lists.
+
+### 19.3 — Syntactic C# identifier references
+
+Added `repo_references` for case-sensitive identifier occurrences across `.cs`
+files within a registered project. Recognizes simple/generic names, invocations,
+member access and object creation; excludes declaration identifiers. Returns
+relative path, 1-based line/column, syntactic kind, files examined and
+`Resolution: "Syntactic"`. It **does not** identify a unique semantic symbol,
+resolve overloads or prove that matches refer to the same declaration.
+
+Limits: up to 1,000 C# files examined, 1 MiB per file, and 200 returned
+references. `Truncated` indicates an incomplete search due to limits, an
+oversized file or an undecodable file. Decoding reuses the shared UTF-8,
+UTF-16 BOM and Windows-1252 fallback reader; malformed UTF-16 is skipped with
+truncation reported. Infrastructure and MCP builds and 11 focused test cases
+reported green. MCP adapter, composition and Explorer/launcher entries were
+added. **Full-suite and final installed-client verification remain unconfirmed.**
+
+### Next verification gate
+
+1. Run the complete solution test suite and `git diff --check`; record results.
+2. Verify installation and that Copilot exposes both new M19 MCP tools.
+3. Validate read-only tool restrictions separately from Copilot-native tools.
+4. Review reference classification and truncation semantics before expanding
+   scope (for example, file-read errors and unresolved semantic ambiguity).
 
 ## Post-M18 backlog — deliberately unscheduled
 

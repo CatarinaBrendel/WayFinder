@@ -16,6 +16,8 @@ using WayFinder.DevTools.Application.Repositories.Discovery;
 using WayFinder.DevTools.Application.Repositories.Relationships;
 using WayFinder.DevTools.Application.Repositories.Symbols;
 using WayFinder.DevTools.Application.Repositories.Navigation;
+using WayFinder.DevTools.Application.Repositories.TypeRelationships;
+using WayFinder.DevTools.Application.Repositories.References;
 
 namespace WayFinder.DevTools.Infrastructure.Composition;
 
@@ -33,6 +35,8 @@ public sealed record WayFinderServices(
     IRepositoryDiscoveryService RepositoryDiscoveryService,
     IRepositoryRelationshipReader RepositoryRelationshipReader,
     IRepositorySymbolReader RepositorySymbolReader,
+    IRepositoryTypeRelationshipReader RepositoryTypeRelationshipReader,
+    IRepositoryReferenceReader RepositoryReferenceReader,
     IRepositorySourceNavigator RepositorySourceNavigator,
     IGitStatusReader GitStatusReader,
     IGitDiffReader GitDiffReader,
@@ -40,4 +44,5 @@ public sealed record WayFinderServices(
     IDoctor Doctor,
     IContextCompiler ContextCompiler,
     IRegisteredProjectResolver RegisteredProjectResolver
+
 );

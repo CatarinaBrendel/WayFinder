@@ -131,7 +131,29 @@ public sealed class RepositorySymbolReader(
         MethodDeclarationSyntax =>
             RepositorySymbolKind.Method,
 
+        ConstructorDeclarationSyntax =>
+            RepositorySymbolKind.Constructor,
+
+        PropertyDeclarationSyntax =>
+            RepositorySymbolKind.Property,
+
+        VariableDeclaratorSyntax variable
+            when variable.Parent?.Parent is FieldDeclarationSyntax =>
+            RepositorySymbolKind.Field,
+
+        VariableDeclaratorSyntax variable
+            when variable.Parent?.Parent is EventFieldDeclarationSyntax =>
+            RepositorySymbolKind.Event,
+
+        EventDeclarationSyntax =>
+            RepositorySymbolKind.Event,
+
+        DelegateDeclarationSyntax =>
+            RepositorySymbolKind.Delegate,
+
+        IndexerDeclarationSyntax =>
+            RepositorySymbolKind.Indexer,
+
         _ => null
     };
-
 }
