@@ -8,15 +8,55 @@ in C#/.NET.
 Its purpose is to provide safe, efficient, structured access to software
 projects for:
 
-- Human developers through the `wayfinder` CLI.
-- AI clients such as ChatGPT and Claude through an MCP server.
+- AI clients (initially GitHub Copilot CLI) through an MCP server.
+- Compatible AI clients, including Claude and other MCP consumers.
+- Human developers through existing headless `wayfinder` commands where useful.
 - Future project-specific developer tooling.
+
+**Direction adopted 2026-10-16:** GitHub Copilot CLI is the preferred
+conversation/agent interface. The WayFinder interactive CLI is frozen for new
+features, but existing code is preserved. WayFinder differentiates itself
+through safe, bounded MCP capabilities, repository intelligence, domain-aware
+instructions, and reusable workflows—not through a competing chat terminal.
 
 The CLI and MCP server are adapters over shared application services.
 Business logic must not be duplicated between them.
 
-WayFinder should remain provider-neutral. Core functionality must not
-depend on a specific AI provider.
+WayFinder remains provider-neutral: core contracts and services must not
+depend on GitHub Copilot or another specific AI provider. Copilot-specific
+profiles, hooks, and packaging belong in integration files or adapters.
+
+---
+
+## Product Direction and CLI Freeze (effective 2026-10-16)
+
+**Maintain, do not expand, the existing `wayfinder interactive` experience.**
+
+Frozen development areas:
+
+- Interactive conversation UX, prompt/editor, completion, spinners, cursor,
+  terminal rendering, and new interactive slash commands.
+- ACP presentation and provider-session features designed primarily to compete
+  with Copilot CLI's native conversation and agent experience.
+- Additional terminal UI frameworks, custom agent chat shells, and duplicate
+  session/agent orchestration engines.
+
+Allowed maintenance:
+
+- Security fixes, correctness regressions, compatibility fixes, and tests that
+  preserve the existing experience.
+- Headless/diagnostic CLI commands needed for local administration, tests, or
+  the MCP architecture; these must not create another AI conversation UI.
+- Removal/deprecation work only after an explicit, separately reviewed decision.
+
+Prioritize the MCP server and shared Application/Infrastructure services,
+secure project and database boundaries, Copilot-native agent profiles, skills,
+and concise domain instructions. Do not delete the CLI or ACP code as part of
+this direction change.
+
+**State distinction:** This is an accepted product direction and documentation
+update; it does not imply that Copilot integration, new agents, SQL tools, or
+other planned features have already been implemented.
 
 ---
 
@@ -130,7 +170,7 @@ Examples:
 Infrastructure must enforce security boundaries required by the
 Application contracts.
 
-### CLI
+### CLI (existing adapter; maintenance-only for interactive features)
 
 The CLI is a human-facing adapter.
 
@@ -143,7 +183,10 @@ It should contain:
 
 It should contain as little business logic as possible.
 
-### Interactive CLI and conversation presentation
+### Interactive CLI and conversation presentation (legacy behavior)
+
+The following rules document **existing code and regression guarantees**;
+they are not an authorization for new interactive UX features.
 
 The `wayfinder interactive` shell is a human-facing adapter. It owns the
 interactive session lifecycle, dispatches recognized slash commands to
@@ -178,11 +221,13 @@ Keep goodbye rendering in one place in the shell's exit path, not both
 in an exit command and the shell. Retain a stable `Session ended.` label
 for testable output even when the accompanying message is randomized.
 
-### ACP conversation and permission lifecycle
+### ACP conversation and permission lifecycle (frozen, maintain for compatibility)
 
-The original `WayFinder.DevTools.Cli` interactive shell is the supported
-terminal interface. Do not replace it with a TUI framework or maintain a
-second terminal UI without an explicit design decision.
+The existing `WayFinder.DevTools.Cli` interactive shell and ACP integration
+are preserved for compatibility and regression testing, **not** the preferred
+new AI conversation interface. GitHub Copilot CLI is preferred for new use.
+Do not replace the frozen shell with a TUI framework or maintain another
+terminal UI without an explicit design decision.
 
 - `ConversationSession` coordinates a provider turn; `CopilotAcpProvider`
   adapts Copilot ACP, while `AcpClient` owns ACP JSON-RPC transport.
@@ -244,6 +289,88 @@ stderr  diagnostics and logging
 ```
 
 Never write human-readable diagnostics to stdout from the MCP process.
+
+---
+
+## Copilot-first Integration Rules
+
+The primary integration target is **GitHub Copilot CLI using WayFinder over
+local stdio MCP**, with Copilot's built-in conversation, model selection, and
+agent delegation retained. Provider-neutral MCP contracts remain the product's
+stable interface; avoid assuming a particular model or paid API key.
+
+Use the following separation of responsibilities:
+
+- **Copilot CLI:** conversation UX, model selection, session lifecycle,
+  agent selection/delegation, and native per-session tool permissions.
+- **WayFinder MCP:** narrow, documented, typed tools, compact structured
+  results, registered-project resolution, authorization and resource bounds.
+- **WayFinder Application/Infrastructure:** reusable discovery, source
+  navigation, context, Git, and future approved domain operations.
+- **Copilot agent profiles / skills / instructions:** role selection,
+  working procedure, code-style and domain guidance; never a security boundary.
+
+Initial integration contract:
+
+1. First validate the existing 12 MCP tool names, inputs and outputs with
+   *actual* Copilot CLI calls; protocol `tools/list` alone proves discovery,
+   not correct external behavior.
+2. First custom agent is a read-only **WayFinder Explorer** that accesses only
+   the explicitly permitted WayFinder MCP tools and reports evidence.
+3. Keep agent responsibilities narrow; defer new multi-agent coordinator code.
+   Prefer Copilot's native delegation and test how delegation handles tool
+   restrictions and inherited instructions.
+4. Prefer existing `AGENTS.md` for authoritative repository rules. Add short
+   `.github/copilot-instructions.md` or path-specific `*.instructions.md` only
+   when actually necessary; avoid conflicting duplicate rules. Keep optional
+   skills task-scoped and loaded on demand.
+5. Document tested tool availability, failures, truncation, timeouts, and
+   token/byte costs before attempting further automation.
+6. Copilot CLI extensions/plugins and UI embellishments are optional, later
+   work—not prerequisites for a secure MCP integration.
+
+Copilot supports custom agent profiles under `.github/agents/` or the user
+`~/.copilot/agents/` directory and per-project skills/instructions. Version
+and exact syntax must be verified against the installed Copilot CLI; do not
+invent support for undocumented UI or agent interception APIs.
+
+### Access-control and trust boundaries
+
+**WayFinder registration only constrains calls through WayFinder.** Copilot
+may independently offer native read/write/shell, web, GitHub, memory,
+other MCP servers, or delegated agents; those are separate authorities.
+
+- A prompt telling an agent to avoid a tool is *not* an authorization check.
+- For an inspection-only session, restrict the tools presented to the agent
+  (for example, Copilot's `--available-tools`), deny shell/write and other
+  unrelated capabilities where supported, and verify actual enforcement.
+- A custom agent's `tools` allowlist reduces that agent's accessible tools
+  but must not be mistaken for a complete OS sandbox, nor an automatic
+  restriction on Copilot's parent conversation.
+- Never use `--allow-all-tools` (or equivalent blanket approval) as a
+  standard WayFinder integration recipe.
+- Use host-level isolation/least privilege when customer repositories,
+  credentials, or databases require stronger guarantees.
+- Delegated agents, hooks, plugins, and subprocesses must be considered in
+  the threat model. Do not let them bypass the registered-project resolver.
+- Stdio protocol output must remain uncontaminated and free of secrets;
+  connection strings, credentials, access tokens, and customer data must not
+  be logged indiscriminately.
+
+### Capability tiers (planned policy)
+
+1. **Inspect** — default: read-only, registered-repository MCP access; any
+   future database access requires separate explicit registration and
+   least-privilege database credentials.
+2. **Execute** — future: tightly scoped build/test or diagnostic operations
+   with explicit authorization, fixed executable/argument contracts, bounded
+   processes, and no generic shell tool.
+3. **Modify** — future, separate review: file, Git, TFVC, configuration, or
+   database changes require authorization beyond registration and suitable
+   verification or rollback procedures.
+
+The tiers describe desired policies, **not** a claim that mode switching or
+new execution/write tools are implemented.
 
 ---
 
@@ -1035,6 +1162,68 @@ provider, or single experiment.
 
 ---
 
+## Target Development Domains (guidance, not yet new tools)
+
+WayFinder's core should remain technology-agnostic. Copilot-specific
+instructions and future specialized MCP tools should address the actual
+C#/.NET/SQL Server development environments without assuming all projects
+use the same framework, version control system, or host OS.
+
+### C# and .NET
+
+- Detect the target framework(s), SDK/toolchain and project format before
+  recommending language features or NuGet upgrades.
+- **Do not equate WayFinder's .NET 10 implementation baseline with customer
+  project targets.** Legacy .NET Framework 4.8 and old-style project files
+  must be investigated without requiring a migration, restore, or build.
+- Distinguish SDK-style and legacy project reference handling; consider
+  assembly binding redirects, framework references, 32-/64-bit dependencies,
+  COM/interop, and Windows-only components where relevant.
+- Do not assume source inspection can load all third-party assemblies, run
+  MSBuild targets safely, or inspect locally installed Sage assemblies.
+- Prefer Roslyn symbol navigation, precise line reads and project relationship
+  metadata to dumping large source files.
+- Prefer unit tests and minimal scoped changes; only run builds or tests if
+  the relevant execution capability is explicitly authorized.
+
+### Microsoft SQL Server (future MCP area)
+
+- Separate environment registration from repository registration. A
+  registered project must not implicitly expose a database or customer VM.
+- Start with **metadata-only operations** (schemas, tables, views, columns,
+  keys, dependencies and object definitions) on explicit allowlisted database
+  targets, with read-only/least-privilege credentials.
+- Do not provide a generic `execute_sql` or stored-procedure invoker as the
+  first feature. Nominally read-only SQL statements can still consume
+  resources, expose sensitive rows, or invoke functions with effects.
+- Bound row/metadata sizes, timeouts, and concurrency; never return
+  credentials or unredacted customer data by default.
+- Treat actual query-plan or performance analysis as separately scoped work,
+  with clear requirements for permissions and production safety.
+- Never execute DDL/DML, maintenance, migration, or permission changes under
+  an inspection capability.
+
+### Sage 100 / AppDesigner and Windows client environments
+
+- Respect customer-specific Windows VMs, installed Sage versions, external
+  DLLs, and AppDesigner integration and deployment constraints.
+- Do not assume Sage runtime/application APIs are available on the macOS
+  WayFinder development host.
+- Distinguish repository facts from knowledge of installed customer systems;
+  never fabricate Sage object models, ERP tables or API availability.
+- Treat solution deployment to customer VMs as a distinct, explicitly
+  approved operation rather than a side effect of a code-analysis request.
+
+### Version control
+
+- Preserve the existing read-only Git implementation and trusted-repository
+  caveats. Do not assume every client uses Git.
+- **TFVC/TFS support is a candidate, not implemented.** Before adding it,
+  define read-only use cases, authentication boundaries and safe tooling for
+  Windows development environments.
+
+---
+
 ## Write Operations
 
 Initial AI-facing capabilities should be read-only wherever practical.
@@ -1135,8 +1324,9 @@ parsing from scratch when a mature solution is preferable.
 
 ## Current Direction
 
-WayFinder development follows the priorities and milestones
-documented in `ROADMAP.md`.
+WayFinder development follows the Copilot-first, MCP-focused priorities and
+milestones documented in `ROADMAP.md`. New interactive CLI features are frozen.
+Do not treat a draft milestone or documentation update as implemented code.
 
 Before beginning a new milestone:
 

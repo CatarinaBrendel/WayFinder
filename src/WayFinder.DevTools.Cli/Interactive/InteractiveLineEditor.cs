@@ -13,6 +13,19 @@ internal sealed class InteractiveLineEditor
     private int _horizontalOffset;
 
     private int _suggestionLineCount;
+    private int _renderedRowCount = 1;
+    private int _renderedCursorRow;
+    private int? _selectionAnchor;
+    private const int ContinuationIndent = 2;
+
+    private bool HasSelection =>
+    _selectionAnchor.HasValue &&
+    _selectionAnchor.Value != _cursorPosition;
+
+    private void ClearSelection()
+    {
+        _selectionAnchor = null;
+    }
 
     public InteractiveLineEditor(
         TextReader input,
@@ -23,7 +36,6 @@ internal sealed class InteractiveLineEditor
         _output = output;
         _completer = completer;
     }
-
     public async Task<string?> ReadLineAsync(
         CancellationToken cancellationToken = default)
     {
@@ -42,100 +54,194 @@ internal sealed class InteractiveLineEditor
         CancellationToken cancellationToken)
     {
         var buffer = new StringBuilder();
+
         _promptWidth = Console.CursorLeft;
         _cursorPosition = 0;
         _horizontalOffset = 0;
         _suggestionLineCount = 0;
+        _renderedRowCount = 1;
+        _renderedCursorRow = 0;
+        _selectionAnchor = null;
+
+        using var terminalMode = new TerminalRawMode();
+        File.AppendAllText(
+            "/tmp/wayfinder-input.log",
+            "TERMINAL RAW MODE ENABLED\n");
+
+        using var input = new FileStream(
+            "/dev/tty",
+            FileMode.Open,
+            FileAccess.Read,
+            FileShare.ReadWrite);
+
+        var reader = new TerminalInputReader();
+        var decoder = Encoding.UTF8.GetDecoder();
+        var bytes = new byte[256];
+        var characters = new char[256];
 
         while (true)
         {
             cancellationToken.ThrowIfCancellationRequested();
 
-            var key = Console.ReadKey(intercept: true);
+            var count = input.Read(bytes, 0, bytes.Length);
 
-            switch (key.Key)
+            if (count == 0)
+                return buffer.ToString();
+
+            var characterCount = decoder.GetChars(
+                bytes,
+                0,
+                count,
+                characters,
+                0,
+                flush: false);
+
+            var events = reader.Feed(
+                new string(characters, 0, characterCount));
+            foreach (var terminalEvent in events)
             {
-                case ConsoleKey.Enter:
-                    ClearSuggestions();
-                    _output.WriteLine();
-                    return buffer.ToString();
+                File.AppendAllText(
+                    "/tmp/wayfinder-input.log",
+                    $"EVENT: {terminalEvent.Kind} [{terminalEvent.Text}]\n");
+            }
 
-                case ConsoleKey.Backspace:
-                    ClearSuggestions();
+            foreach (var terminalInput in events)
+            {
+                switch (terminalInput.Kind)
+                {
+                    case TerminalInputKind.Enter:
+                        ClearSuggestions();
+                        MoveToEndOfInput();
+                        _output.WriteLine();
+                        return buffer.ToString();
 
-                    if (_cursorPosition > 0)
-                    {
-                        buffer.Remove(_cursorPosition - 1, 1);
-                        _cursorPosition--;
+                    case TerminalInputKind.NewLine:
+                        ClearSuggestions();
+                        InsertText(buffer, "\n");
+                        break;
 
-                        RedrawInput(buffer);
-                    }
+                    case TerminalInputKind.Paste:
+                        ClearSuggestions();
+                        InsertText(
+                            buffer,
+                            terminalInput.Text.Replace("\r\n", "\n")
+                                              .Replace('\r', '\n'));
+                        break;
 
-                    break;
+                    case TerminalInputKind.Character:
+                        ClearSuggestions();
+                        InsertText(buffer, terminalInput.Text);
+                        break;
 
-                case ConsoleKey.LeftArrow:
-                    ClearSuggestions();
-
-                    if (_cursorPosition > 0)
-                    {
-                        _cursorPosition--;
-                        RedrawInput(buffer);
-                    }
-
-                    break;
-
-                case ConsoleKey.RightArrow:
-                    ClearSuggestions();
-
-                    if (_cursorPosition < buffer.Length)
-                    {
-                        _cursorPosition++;
-                        RedrawInput(buffer);
-                    }
-
-                    break;
-
-                case ConsoleKey.Tab:
-                    Complete(buffer);
-                    break;
-
-                case ConsoleKey.Home:
-                    ClearSuggestions();
-
-                    _cursorPosition = 0;
-                    RedrawInput(buffer);
-                    break;
-
-                case ConsoleKey.End:
-                    ClearSuggestions();
-
-                    _cursorPosition = buffer.Length;
-                    RedrawInput(buffer);
-                    break;
-
-                case ConsoleKey.Delete:
-                    ClearSuggestions();
-
-                    if (_cursorPosition < buffer.Length)
-                    {
-                        buffer.Remove(_cursorPosition, 1);
-                        RedrawInput(buffer);
-                    }
-
-                    break;
-
-                default:
-                    if (!char.IsControl(key.KeyChar))
-                    {
+                    case TerminalInputKind.Backspace:
                         ClearSuggestions();
 
-                        buffer.Insert(_cursorPosition, key.KeyChar);
-                        _cursorPosition++;
+                        if (DeleteSelection(buffer))
+                        {
+                            RedrawInput(buffer);
+                        }
+                        else if (_cursorPosition > 0)
+                        {
+                            buffer.Remove(_cursorPosition - 1, 1);
+                            _cursorPosition--;
+                            RedrawInput(buffer);
+                        }
 
+                        break;
+
+                    case TerminalInputKind.Delete:
+                        ClearSuggestions();
+
+                        if (DeleteSelection(buffer))
+                        {
+                            RedrawInput(buffer);
+                        }
+                        else if (_cursorPosition < buffer.Length)
+                        {
+                            buffer.Remove(_cursorPosition, 1);
+                            RedrawInput(buffer);
+                        }
+
+                        break;
+
+                    case TerminalInputKind.LeftArrow:
+                        ClearSuggestions();
+
+                        if (HasSelection)
+                        {
+                            _cursorPosition = Math.Min(
+                                _selectionAnchor!.Value,
+                                _cursorPosition);
+                        }
+                        else if (_cursorPosition > 0)
+                        {
+                            _cursorPosition--;
+                        }
+
+                        ClearSelection();
                         RedrawInput(buffer);
-                    }
+                        break;
 
-                    break;
+                    case TerminalInputKind.RightArrow:
+                        ClearSuggestions();
+
+                        if (HasSelection)
+                        {
+                            _cursorPosition = Math.Max(
+                                _selectionAnchor!.Value,
+                                _cursorPosition);
+                        }
+                        else if (_cursorPosition < buffer.Length)
+                        {
+                            _cursorPosition++;
+                        }
+
+                        ClearSelection();
+                        RedrawInput(buffer);
+                        break;
+
+                    case TerminalInputKind.Home:
+                        ClearSuggestions();
+                        ClearSelection();
+                        _cursorPosition = 0;
+                        RedrawInput(buffer);
+                        break;
+
+                    case TerminalInputKind.End:
+                        ClearSuggestions();
+                        ClearSelection();
+                        _cursorPosition = buffer.Length;
+                        RedrawInput(buffer);
+                        break;
+
+                    case TerminalInputKind.Tab:
+                        if (!buffer.ToString().Contains('\n'))
+                        {
+                            Complete(buffer);
+                        }
+
+                        break;
+
+                    case TerminalInputKind.UpArrow:
+                        ClearSuggestions();
+                        ClearSelection();
+                        MoveCursorVertically(buffer, -1);
+                        break;
+
+                    case TerminalInputKind.DownArrow:
+                        ClearSuggestions();
+                        ClearSelection();
+                        MoveCursorVertically(buffer, 1);
+                        break;
+
+                    case TerminalInputKind.ShiftLeftArrow:
+                    case TerminalInputKind.ShiftRightArrow:
+                    case TerminalInputKind.ShiftUpArrow:
+                    case TerminalInputKind.ShiftDownArrow:
+                        ClearSuggestions();
+                        ExtendSelection(buffer, terminalInput.Kind);
+                        break;
+                }
             }
 
             _output.Flush();
@@ -157,6 +263,8 @@ internal sealed class InteractiveLineEditor
 
         if (matches.Count == 1)
         {
+            ClearSelection();
+
             buffer.Clear();
             buffer.Append(matches[0]);
 
@@ -249,7 +357,7 @@ internal sealed class InteractiveLineEditor
         _suggestionLineCount = 0;
     }
 
-    private void RedrawInput(StringBuilder buffer)
+    private void RedrawSingleLineInput(StringBuilder buffer)
     {
         var terminalWidth = Console.WindowWidth;
 
@@ -331,4 +439,289 @@ internal sealed class InteractiveLineEditor
             }
         }
     }
+
+    private void RedrawInput(StringBuilder buffer)
+    {
+        var text = buffer.ToString();
+        var width = Math.Max(1, Console.WindowWidth);
+
+        // Move from the current cursor row to the first input row.
+        if (_renderedCursorRow > 0)
+        {
+            _output.Write($"\u001b[{_renderedCursorRow}A");
+        }
+
+        _output.Write("\r");
+
+        // Clear the previously rendered input.
+        for (var i = 0; i < _renderedRowCount; i++)
+        {
+            _output.Write("\u001b[2K");
+
+            if (i < _renderedRowCount - 1)
+            {
+                _output.Write("\u001b[1B\r");
+            }
+        }
+
+        // Return to the first input row.
+        if (_renderedRowCount > 1)
+        {
+            _output.Write($"\u001b[{_renderedRowCount - 1}A");
+        }
+
+        _output.Write("\r");
+
+        // Render the prompt.
+        InteractivePresentation.WritePrompt(_output);
+
+        var row = 0;
+        var column = _promptWidth;
+
+        var cursorRow = 0;
+        var cursorColumn = _promptWidth;
+
+        for (var i = 0; i < text.Length; i++)
+        {
+            if (i == _cursorPosition)
+            {
+                cursorRow = row;
+                cursorColumn = column;
+            }
+
+            if (text[i] == '\n')
+            {
+                _output.Write("\r\n");
+                row++;
+                column = 0;
+
+                var indent = Math.Min(ContinuationIndent, Math.Max(0, width - 2));
+
+                if (indent > 0)
+                {
+                    _output.Write($"\u001b[{indent}C");
+                }
+
+                column = indent;
+
+                continue;
+            }
+
+            // Avoid writing into the last column, where terminal
+            // auto-wrapping behavior can vary.
+            if (column >= width - 1)
+            {
+                _output.Write("\r\n");
+                row++;
+                column = 0;
+
+                var indent = Math.Min(ContinuationIndent, Math.Max(0, width - 2));
+
+                if (indent > 0)
+                {
+                    _output.Write($"\u001b[{indent}C");
+                }
+
+                column = indent;
+            }
+
+            var isSelected = _selectionAnchor.HasValue
+                && i >= Math.Min(_selectionAnchor.Value, _cursorPosition)
+                && i < Math.Max(_selectionAnchor.Value, _cursorPosition);
+
+            if (isSelected)
+            {
+                _output.Write("\u001b[7m");
+            }
+
+            _output.Write(text[i]);
+
+            if (isSelected)
+            {
+                _output.Write("\u001b[27m");
+            }
+
+            column++;
+        }
+
+        if (_cursorPosition == text.Length)
+        {
+            cursorRow = row;
+            cursorColumn = column;
+        }
+
+        _renderedRowCount = row + 1;
+        _renderedCursorRow = cursorRow;
+
+        // Move from the final rendered row to the logical cursor row.
+        var rowsUp = row - cursorRow;
+
+        if (rowsUp > 0)
+        {
+            _output.Write($"\u001b[{rowsUp}A");
+        }
+
+        // Return to the beginning of the cursor's visual row.
+        _output.Write("\r");
+
+        // Position the cursor at the calculated visual column.
+        _output.Write($"\u001b[{cursorColumn + 1}G");
+
+        _output.Flush();
+    }
+
+    private void InsertText(
+    StringBuilder buffer,
+    string text)
+    {
+        if (HasSelection)
+        {
+            var start = Math.Min(
+                _selectionAnchor!.Value,
+                _cursorPosition);
+
+            var end = Math.Max(
+                _selectionAnchor.Value,
+                _cursorPosition);
+
+            buffer.Remove(start, end - start);
+            _cursorPosition = start;
+        }
+
+        ClearSelection();
+
+        buffer.Insert(_cursorPosition, text);
+        _cursorPosition += text.Length;
+
+        RedrawInput(buffer);
+    }
+
+    private void MoveToEndOfInput()
+    {
+        var rowsDown = _renderedRowCount - 1 - _renderedCursorRow;
+
+        if (rowsDown > 0)
+        {
+            _output.Write($"\u001b[{rowsDown}B");
+        }
+
+        _output.Write("\r");
+    }
+
+    private void MoveCursorVertically(
+    StringBuilder buffer,
+    int direction,
+        bool redraw = true)
+    {
+        var text = buffer.ToString();
+
+        var lineStart = text.LastIndexOf(
+            '\n',
+            Math.Max(0, _cursorPosition - 1)) + 1;
+
+        var column = _cursorPosition - lineStart;
+
+        if (direction < 0)
+        {
+            if (lineStart == 0)
+                return;
+
+            var previousLineEnd = lineStart - 1;
+
+            var previousLineStart = text.LastIndexOf(
+                '\n',
+                Math.Max(0, previousLineEnd - 1)) + 1;
+
+            var previousLineLength =
+                previousLineEnd - previousLineStart;
+
+            _cursorPosition = previousLineStart +
+                Math.Min(column, previousLineLength);
+        }
+        else
+        {
+            var nextLineStart = text.IndexOf(
+                '\n',
+                _cursorPosition);
+
+            if (nextLineStart < 0)
+                return;
+
+            nextLineStart++;
+
+            var nextLineEnd = text.IndexOf(
+                '\n',
+                nextLineStart);
+
+            if (nextLineEnd < 0)
+                nextLineEnd = text.Length;
+
+            var nextLineLength = nextLineEnd - nextLineStart;
+
+            _cursorPosition = nextLineStart +
+                Math.Min(column, nextLineLength);
+        }
+
+        if (redraw)
+        {
+            RedrawInput(buffer);
+        }
+    }
+
+    private void ExtendSelection(
+        StringBuilder buffer,
+        TerminalInputKind direction)
+    {
+        _selectionAnchor ??= _cursorPosition;
+
+        switch (direction)
+        {
+            case TerminalInputKind.ShiftLeftArrow:
+                _cursorPosition = Math.Max(0, _cursorPosition - 1);
+                break;
+
+            case TerminalInputKind.ShiftRightArrow:
+                _cursorPosition = Math.Min(
+                    buffer.Length,
+                    _cursorPosition + 1);
+                break;
+
+            case TerminalInputKind.ShiftUpArrow:
+                MoveCursorVertically(buffer, -1, redraw: false);
+                break;
+
+            case TerminalInputKind.ShiftDownArrow:
+                MoveCursorVertically(buffer, 1, redraw: false);
+                break;
+        }
+
+        if (_cursorPosition == _selectionAnchor)
+        {
+            _selectionAnchor = null;
+        }
+
+        RedrawInput(buffer);
+    }
+
+    private bool DeleteSelection(StringBuilder buffer)
+    {
+        if (!HasSelection)
+            return false;
+
+        var start = Math.Min(
+            _selectionAnchor!.Value,
+            _cursorPosition);
+
+        var end = Math.Max(
+            _selectionAnchor.Value,
+            _cursorPosition);
+
+        buffer.Remove(start, end - start);
+
+        _cursorPosition = start;
+        ClearSelection();
+
+        return true;
+    }
+
 }
